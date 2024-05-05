@@ -237,3 +237,20 @@ interface DiskLayout {
   temperature?: number | null;
 }
 [];
+
+export type CheckResult = {
+  name: string;
+  isInstalled: boolean;
+};
+
+export type Application = {
+  name: string;
+  package: string;
+  version?: string;
+  install?: Install[];
+};
+
+type Install = {
+  distro: string;
+  command: string;
+};

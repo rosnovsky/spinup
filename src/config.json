@@ -2,41 +2,219 @@
   "version": "1",
   "applications": [
     {
+      "name": "make",
+      "package": "make",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y make"
+        }
+      ]
+    },
+    {
+      "name": "gcc",
+      "package": "gcc",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y gcc"
+        }
+      ]
+    },
+    {
+      "name": "g++",
+      "package": "g++",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y g++"
+        }
+      ]
+    },
+    {
       "name": "git",
-      "package": "git"
+      "package": "git",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y git"
+        }
+      ]
     },
     {
       "name": "node",
       "package": "nodejs",
-      "version": "21"
+      "version": "21",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && nvm install 21"
+        }
+      ]
     },
     {
-      "name": "docker",
-      "package": "docker"
+      "name": "python",
+      "package": "python",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y python3"
+        }
+      ]
     },
     {
-      "name": "nvim",
-      "package": "neovim"
+      "name": "pip",
+      "package": "python3-pip",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y python3-pip"
+        }
+      ]
     },
     {
-      "name": "eza",
-      "package": "eza"
+      "name": "cargo",
+      "package": "cargo",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && . ~/.cargo/env"
+        }
+      ]
+    },
+    {
+      "name": "bat",
+      "package": "bat",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y bat"
+        }
+      ]
+    },
+    {
+      "name": "fzf",
+      "package": "fzf",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y fzf"
+        }
+      ]
+    },
+    {
+      "name": "jq",
+      "package": "jq",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y jq"
+        }
+      ]
     },
     {
       "name": "zsh",
-      "package": "zsh"
+      "package": "zsh",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y zsh"
+        }
+      ]
     },
     {
       "name": "tmux",
-      "package": "tmux"
+      "package": "tmux",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y tmux"
+        }
+      ]
     },
     {
       "name": "btop",
-      "package": "btop"
+      "package": "btop",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y btop"
+        }
+      ]
+    },
+    {
+      "name": "docker",
+      "package": "docker",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y docker"
+        }
+      ]
+    },
+    {
+      "name": "kubectl",
+      "package": "kubectl",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo\n[kubernetes] \nname=Kubernetes\nbaseurl=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/\nenabled=1\ngpgcheck=1\ngpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key\nEOF"
+        },
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y kubectl"
+        }
+      ]
+    },
+    {
+      "name": "nvim",
+      "package": "neovim",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y neovim"
+        }
+      ]
+    },
+    {
+      "name": "eza",
+      "package": "eza",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y eza"
+        }
+      ]
     },
     {
       "name": "neofetch",
-      "package": "neofetch"
+      "package": "neofetch",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y neofetch"
+        }
+      ]
+    },
+    {
+      "name": "brew",
+      "package": "brew",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        }
+      ]
+    },
+    {
+      "name": "atuin",
+      "package": "atuin",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "cargo install atuin && echo 'eval \"$(atuin init zsh)\"' >> ~/.zshrc"
+        }
+      ]
     }
   ]
 }

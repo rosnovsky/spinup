@@ -7,7 +7,8 @@
     "node": ">=20.5.1"
   },
   "scripts": {
-    "build": "echo \"Warning: no build specified\" && exit 0",
+    "build": "make build",
+    "dev": "tsc & node dist/index.js",
     "commit": "cz",
     "release": "standard-version",
     "prepare": "husky install",
@@ -17,7 +18,11 @@
     "linux-config-cli": "./dist/index.js"
   },
   "keywords": [],
-  "author": "Name <email>",
+  "author": {
+    "name": "Art Rosnovsky",
+    "email": "art@rosnovsky.us",
+    "url": "https://github.com/rosnovsky"
+  },
   "license": "ISC",
   "private": true,
   "repository": {
@@ -27,6 +32,7 @@
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-conventional": "^18.4.3",
+    "@types/figlet": "^1.5.8",
     "@types/inquirer": "^9.0.7",
     "@types/node": "^20.12.8",
     "@types/shelljs": "^0.8.15",
@@ -49,9 +55,11 @@
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.4",
     "enquirer": "^2.4.1",
+    "figlet": "^1.7.0",
     "inquirer": "^9.2.20",
     "node-ssh": "^13.2.0",
     "shelljs": "^0.8.5",
+    "supports-color": "^9.4.0",
     "systeminformation": "^5.22.7"
   }
 }
