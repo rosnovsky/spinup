@@ -1,7 +1,7 @@
 {
-  "name": "create-project",
+  "name": "spinup",
   "version": "1.0.1",
-  "description": "Project Description",
+  "description": "Spin up CLI for configuring new Linux machines.",
   "main": "index.js",
   "engines": {
     "node": ">=20.5.1"
@@ -12,6 +12,9 @@
     "release": "standard-version",
     "prepare": "husky install",
     "test": "echo \"Warning: no test specified\" && exit 0"
+  },
+  "bin": {
+    "linux-config-cli": "./dist/index.js"
   },
   "keywords": [],
   "author": "Name <email>",
@@ -24,6 +27,9 @@
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-conventional": "^18.4.3",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.12.8",
+    "@types/shelljs": "^0.8.15",
     "commitizen": "^4.3.0",
     "cz-conventional-changelog": "^3.3.0",
     "husky": "^8.0.3",
@@ -38,5 +44,12 @@
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "enquirer": "^2.4.1",
+    "inquirer": "^9.2.20",
+    "node-ssh": "^13.2.0",
+    "shelljs": "^0.8.5"
   }
 }

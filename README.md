@@ -1,15 +1,19 @@
-# Template Readme
+# CLI for setting up a new Linux computer
 
-## What is it
+This is a command line tool to set up a new Linux computer. It is designed to check existing installed applications and configurations, to install any missing dependencies, and to configure the system to be ready for use.
 
-A template for creating new projects
+## Installation
 
-## How to use it
+To install the CLI, run the following command:
 
-Either use it directly from the repository page
+```bash
+pnpm install -g spinup
+```
 
-![Screenshot from 2023-11-23 13-32-03](https://github.com/rosnovsky/create-project/assets/2508576/908ed212-b376-4310-9cef-54881eddcd29)
+## Usage
 
-or select this template when creating a new repo
+To use the CLI, run the following command:
 
-![Screenshot from 2023-11-23 13-32-46](https://github.com/rosnovsky/create-project/assets/2508576/731b9d05-b909-4d51-8178-fab889f2fb0b)
+```bash
+spinup
+```
