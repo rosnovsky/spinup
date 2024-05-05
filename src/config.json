@@ -133,6 +133,30 @@
       ]
     },
     {
+      "name": "rg",
+      "package": "ripgrep",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y ripgrep"
+        }
+      ]
+    },
+    {
+      "name": "alacritty",
+      "package": "alacritty",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install cmake freetype-devel fontconfig-devel libxcb-devel libxkbcommon-devel g++"
+        },
+        {
+          "distro": "Fedora Linux",
+          "command": "cargo install alacritty"
+        }
+      ]
+    },
+    {
       "name": "btop",
       "package": "btop",
       "install": [
