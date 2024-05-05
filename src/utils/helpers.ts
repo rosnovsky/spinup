@@ -135,9 +135,9 @@ export function checkApplications() {
   applications.forEach((app) => {
     const check = isInstalled(app);
     if (check.isInstalled) {
-      installed.push(`${chalk.greenBright("✓")} ${check.name}`);
+      installed.push(`${chalk.greenBright("✔")} ${check.name}`);
     } else {
-      missing.push(`${chalk.redBright("✗")} ${check.name}`);
+      missing.push(`${chalk.redBright("✖")} ${check.name}`);
     }
   });
 
@@ -183,10 +183,11 @@ export function installApplications(missingApps: Application[]) {
           });
         }
       });
+      console.log(`${chalk.green("✔")} All applications are installed.`);
       process.exit(0);
     } else {
-      clearConsole();
-      console.log(chalk.green("All applications are installed."));
+      // clearConsole();
+      console.log(`${chalk.green("✔")} All applications are installed.`);
       process.exit(0);
     }
   } catch (err) {

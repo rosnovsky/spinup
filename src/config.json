@@ -148,7 +148,7 @@
       "install": [
         {
           "distro": "Fedora Linux",
-          "command": "sudo dnf install cmake freetype-devel fontconfig-devel libxcb-devel libxkbcommon-devel g++"
+          "command": "sudo dnf install -y cmake freetype-devel fontconfig-devel libxcb-devel libxkbcommon-devel g++"
         },
         {
           "distro": "Fedora Linux",
