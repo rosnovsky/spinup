@@ -25,19 +25,17 @@ function configureFile(sourcePath: string, targetPath: string): void {
 
 // Function to configure the system
 async function configureSystem(): Promise<void> {
-  const packages = ["curl", "vim"]; // Add more packages as needed
-  const configs = [
-    {
-      source: "/path/to/default/.vimrc",
-      target: "/home/username/.vimrc",
-    },
-  ];
-
-  // Install missing packages
-  packages.forEach(installPackage);
-
-  // Configure necessary files
-  configs.forEach((config) => configureFile(config.source, config.target));
+  // const packages = ["curl", "vim"]; // Add more packages as needed
+  // const configs = [
+  //   {
+  //     source: "/path/to/default/.vimrc",
+  //     target: "/home/username/.vimrc",
+  //   },
+  // ];
+  // // Install missing packages
+  // packages.forEach(installPackage);
+  // // Configure necessary files
+  // configs.forEach((config) => configureFile(config.source, config.target));
 }
 
 export { configureSystem };

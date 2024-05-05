@@ -1,5 +1,6 @@
 import shell from "shelljs";
 import config from "../config.json";
+import chalk from "chalk";
 
 interface CheckResult {
   name: string;
@@ -23,7 +24,9 @@ async function checkSystem(): Promise<void> {
 
   return results.forEach((result) => {
     console.log(
-      `${result.name}: ${result.isInstalled ? "Installed" : "Not Installed"}`,
+      `${result.isInstalled ? chalk.greenBright("✓") : chalk.redBright("✗")} ${
+        result.name
+      }`,
     );
   });
 }

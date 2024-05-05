@@ -46,10 +46,12 @@
     "**/*": "prettier --write --ignore-unknown"
   },
   "dependencies": {
-    "chalk": "^5.3.0",
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.4",
     "enquirer": "^2.4.1",
     "inquirer": "^9.2.20",
     "node-ssh": "^13.2.0",
-    "shelljs": "^0.8.5"
+    "shelljs": "^0.8.5",
+    "systeminformation": "^5.22.7"
   }
 }
