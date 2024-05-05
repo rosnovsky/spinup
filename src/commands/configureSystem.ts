@@ -5,7 +5,7 @@ import path from "path";
 // Function to install a software package
 function installPackage(packageName: string): void {
   console.log(`Attempting to install ${packageName}...`);
-  if (shell.exec(`sudo apt-get install -y ${packageName}`).code !== 0) {
+  if (shell.exec(`sudo dnf install -y ${packageName}`).code !== 0) {
     console.error(`Failed to install ${packageName}`);
   } else {
     console.log(`${packageName} installed successfully.`);
@@ -25,7 +25,6 @@ function configureFile(sourcePath: string, targetPath: string): void {
 
 // Function to configure the system
 async function configureSystem(): Promise<void> {
-  // Define the packages and configuration files
   const packages = ["curl", "vim"]; // Add more packages as needed
   const configs = [
     {

@@ -18,10 +18,12 @@ async function mainMenu() {
     ],
   });
 
+  console.log(response);
+
   switch (response.action) {
-    case "check":
+    case "Check system":
+      console.log("Checking system...");
       await checkSystem();
-      break;
     case "configure":
       await configureSystem();
       break;
@@ -30,8 +32,8 @@ async function mainMenu() {
       process.exit();
   }
 
-  // Optionally loop back to the main menu
-  await mainMenu();
+  // // Optionally loop back to the main menu
+  // await mainMenu();
 }
 
 mainMenu().catch((err) => {

@@ -1,0 +1,42 @@
+{
+  "version": "1",
+  "applications": [
+    {
+      "name": "git",
+      "package": "git"
+    },
+    {
+      "name": "node",
+      "package": "nodejs",
+      "version": "21"
+    },
+    {
+      "name": "docker",
+      "package": "docker"
+    },
+    {
+      "name": "nvim",
+      "package": "neovim"
+    },
+    {
+      "name": "eza",
+      "package": "eza"
+    },
+    {
+      "name": "zsh",
+      "package": "zsh"
+    },
+    {
+      "name": "tmux",
+      "package": "tmux"
+    },
+    {
+      "name": "btop",
+      "package": "btop"
+    },
+    {
+      "name": "neofetch",
+      "package": "neofetch"
+    }
+  ]
+}

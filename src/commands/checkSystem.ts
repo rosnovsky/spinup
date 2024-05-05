@@ -1,4 +1,5 @@
 import shell from "shelljs";
+import config from "../config.json";
 
 interface CheckResult {
   name: string;
@@ -17,10 +18,10 @@ function isInstalled(application: string): CheckResult {
 
 // Function to perform all checks
 async function checkSystem(): Promise<void> {
-  const applications = ["git", "node", "npm", "docker"]; // Extend this list as needed
+  const applications = config.applications.map((app) => app.name);
   const results = applications.map(isInstalled);
 
-  results.forEach((result) => {
+  return results.forEach((result) => {
     console.log(
       `${result.name}: ${result.isInstalled ? "Installed" : "Not Installed"}`,
     );
