@@ -157,6 +157,16 @@
       ]
     },
     {
+      "name": "k9s",
+      "package": "k9s",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "brew install derailed/k9s/k9s"
+        }
+      ]
+    },
+    {
       "name": "btop",
       "package": "btop",
       "install": [
