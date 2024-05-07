@@ -11,6 +11,6 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true
-  }
-  // ... include/exclude as necessary
+  },
+  "exclude": ["node_modules", "dist", "commitlint.config.js"]
 }

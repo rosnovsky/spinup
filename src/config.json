@@ -1,4 +1,5 @@
 {
+  "$schema": "./utils/schema.json",
   "version": "1",
   "applications": [
     {
@@ -44,7 +45,6 @@
     {
       "name": "node",
       "package": "nodejs",
-      "version": "21",
       "install": [
         {
           "distro": "Fedora Linux",
@@ -113,6 +113,10 @@
         {
           "distro": "Fedora Linux",
           "command": "sudo dnf install -y jq"
+        },
+        {
+          "distro": "macOS",
+          "command": "brew install jq"
         }
       ]
     },
@@ -134,7 +138,8 @@
           "distro": "Fedora Linux",
           "command": "sudo dnf install -y tmux"
         }
-      ]
+      ],
+      "dependencies": ["tmux-plugins"]
     },
     {
       "name": "rg",
@@ -143,6 +148,10 @@
         {
           "distro": "Fedora Linux",
           "command": "sudo dnf install -y ripgrep"
+        },
+        {
+          "distro": "macOS",
+          "command": "brew install ripgrep"
         }
       ]
     },
@@ -181,6 +190,10 @@
         {
           "distro": "Fedora Linux",
           "command": "sudo dnf install -y btop"
+        },
+        {
+          "distro": "macOS",
+          "command": "brew install btop"
         }
       ]
     },
@@ -255,6 +268,38 @@
         {
           "distro": "Fedora Linux",
           "command": "cargo install atuin && echo 'eval \"$(atuin init zsh)\"' >> ~/.zshrc"
+        }
+      ]
+    }
+  ],
+  "fonts": [
+    {
+      "name": "Fira Code",
+      "package": "firacode",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y firacode"
+        },
+        {
+          "distro": "macOS",
+          "command": "brew install firacode"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "tmux-plugins",
+      "package": "tmux-plugins",
+      "install": [
+        {
+          "distro": "Fedora Linux",
+          "command": "sudo dnf install -y tmux-plugins"
+        },
+        {
+          "distro": "macOS",
+          "command": "brew install tmux-plugins"
         }
       ]
     }

@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "$schema": {
+      "type": "string"
+    },
+    "applications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "package": { "type": "string" },
+          "install": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "distro": { "type": "string" },
+                "command": { "type": "string" }
+              },
+              "required": ["distro", "command"],
+              "additionalProperties": false
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "package", "install"],
+        "additionalProperties": false
+      }
+    },
+    "fonts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "package": { "type": "string" },
+          "install": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "distro": { "type": "string" },
+                "command": { "type": "string" }
+              },
+              "required": ["distro", "command"],
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "package": { "type": "string" },
+          "install": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "distro": { "type": "string" },
+                "command": { "type": "string" }
+              },
+              "required": ["distro", "command"],
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": ["version", "applications"],
+  "additionalProperties": false
+}
