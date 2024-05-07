@@ -1,4 +1,4 @@
-import si from "systeminformation";
+import si, { osInfo } from "systeminformation";
 import shell from "shelljs";
 import chalk from "chalk";
 import Table from "cli-table3";
@@ -171,23 +171,36 @@ function displayInstallationStatus(
   console.log(table.toString());
 }
 
-export function installApplications(missingApps: Application[]) {
+export async function installApplications(missingApps: Application[]) {
   try {
+    const os = (await osInfo()).distro;
     if (missingApps.length > 0) {
-      console.log("Installing missing applications...");
+      console.log(`Installing missing applications on ${os}...`);
       missingApps.forEach((app) => {
-        if (app.install) {
-          console.log(`Installing ${app.name}...`);
-          app.install.forEach((distro) => {
-            shell.exec(distro.command);
-          });
+        if (!app.install) {
+          console.log(
+            `${chalk.redBright("✖")} ${
+              app.name
+            } is missing an install command`,
+          );
+          return;
         }
+        app.install.forEach(async (distro) => {
+          if (distro.distro === os) {
+            console.log(`Installing ${app.name} on ${os}...`);
+            shell.exec(distro.command);
+          }
+        });
       });
-      console.log(`${chalk.green("✔")} All applications are installed.`);
+      console.log(
+        `${chalk.green("✔")} All available applications are installed.`,
+      );
       process.exit(0);
     } else {
       // clearConsole();
-      console.log(`${chalk.green("✔")} All applications are installed.`);
+      console.log(
+        `${chalk.green("✔")} All applications are already installed.`,
+      );
       process.exit(0);
     }
   } catch (err) {

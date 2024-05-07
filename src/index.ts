@@ -17,7 +17,7 @@ async function mainMenu() {
   printBanner();
   await displaySystemInfo();
   const missingApps = checkSystem();
-  installApplications(missingApps);
+  await installApplications(missingApps);
 
   // const response = await prompt<PromptResponse>({
   //   type: "select",

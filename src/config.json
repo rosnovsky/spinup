@@ -79,6 +79,10 @@
         {
           "distro": "Fedora Linux",
           "command": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && . ~/.cargo/env"
+        },
+        {
+          "distro": "macOS",
+          "command": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && . ~/.cargo/env"
         }
       ]
     },
@@ -162,6 +166,10 @@
       "install": [
         {
           "distro": "Fedora Linux",
+          "command": "brew install derailed/k9s/k9s"
+        },
+        {
+          "distro": "macOS",
           "command": "brew install derailed/k9s/k9s"
         }
       ]
