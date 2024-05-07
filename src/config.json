@@ -1,6 +1,6 @@
 {
   "$schema": "./utils/schema.json",
-  "version": "1",
+  "version": "1.0.0",
   "applications": [
     {
       "name": "make",
