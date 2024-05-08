@@ -10,7 +10,7 @@ use futures::stream::{self, StreamExt};
 use prettytable::{format, Cell, Row, Table};
 use std::error::Error;
 use std::process::Command;
-use sys_info;
+use sysinfo::{Components, Cpu, System};
 
 /// Checks whether applications are installed on the system.
 ///
@@ -126,12 +126,15 @@ pub fn clear_console() {
 }
 
 pub async fn display_system_info() {
-    let cpu_speed = sys_info::cpu_speed().unwrap();
-    let os_release = sys_info::linux_os_release()
-        .unwrap()
-        .pretty_name()
-        .to_owned();
-    // let kernel = sys_info::os_release().unwrap().to_owned();
+    let mut system = System::new_all();
+    let cpu = system.cpus().iter().next().unwrap();
+
+    let frequency = Cpu::frequency(cpu);
+
+    system.refresh_all();
+
+    let cpu_speed = frequency;
+    let os_release = System::long_os_version().unwrap();
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_DEFAULT);
