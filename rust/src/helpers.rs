@@ -1,88 +1,13 @@
-//! This module contains helper functions for the `spinup` CLI.
-//! It provides functions for checking the system, displaying system information, and displaying installed and missing applications.
-
-// TODO: Is it customary in Rust to split up the helper functions into separate modules?
-
 use crate::auth::{self, poll_for_token};
-use crate::config::{Os, Software};
+use crate::structs::{GistList, Os, Software};
 use colored::*;
 use figlet_rs::FIGfont;
 use prettytable::{format, Cell, Row, Table};
 use reqwest::{header, Client};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs;
 use std::process::Command;
 use std::{error::Error, path::Path};
 use sysinfo::{Cpu, System, IS_SUPPORTED_SYSTEM};
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct User {
-    login: String,
-    id: u64,
-    node_id: String,
-    avatar_url: String,
-    gravatar_id: Option<String>,
-    url: String,
-    html_url: String,
-    followers_url: String,
-    following_url: String,
-    gists_url: String,
-    starred_url: String,
-    subscriptions_url: String,
-    organizations_url: String,
-    repos_url: String,
-    events_url: String,
-    received_events_url: String,
-    site_admin: bool,
-    // Additional fields can be added here
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GistFile {
-    pub filename: String,
-    pub r#type: String,
-    pub language: Option<String>,
-    pub raw_url: String,
-    pub size: usize,
-    pub truncated: Option<bool>,
-    pub content: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Gist {
-    pub id: String,
-    pub node_id: String,
-    pub git_pull_url: String,
-    pub git_push_url: String,
-    pub html_url: String,
-    pub files: HashMap<String, GistFile>,
-    pub public: bool,
-    pub raw_url: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
-    pub description: Option<String>,
-    pub comments: u32,
-    pub user: Option<User>,
-    pub forks_url: String,
-    pub commits_url: String,
-    pub comments_url: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GistList(pub Vec<Gist>);
-
-impl GistList {
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn find_by_file_name(&self, file_name: &str) -> Option<&Gist> {
-        self.0
-            .iter()
-            .find(|gist| gist.files.contains_key(file_name))
-    }
-}
 
 pub async fn check_applications_status(
     applications: &[Software],
@@ -241,7 +166,7 @@ pub async fn display_system_info() {
         )),
     ]));
 
-    table.printstd(); // Prints the table to stdout
+    table.printstd();
 }
 
 pub fn print_banner() {
@@ -299,11 +224,12 @@ pub async fn get_user_gists() -> Result<GistList, Box<dyn Error>> {
 
     if response.status().is_success() {
         let gists = response.json::<GistList>().await?;
+        fs::remove_file("./.token")?;
         Ok(gists)
     } else {
         Err(Box::new(std::io::Error::new(
             std::io::ErrorKind::Other,
-            "Failed to fetch gists",
+            format!("Failed to fetch gists: {}", response.status()),
         )))
     }
 }

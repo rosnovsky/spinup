@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "exclude": ["node_modules", "dist", "commitlint.config.js"]
+  "exclude": ["node_modules", "dist", "commitlint.config.js", "rust"]
 }

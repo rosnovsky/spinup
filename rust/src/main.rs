@@ -1,6 +1,7 @@
 mod auth;
 mod config;
 mod helpers;
+mod structs;
 use tokio;
 
 #[tokio::main]

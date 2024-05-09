@@ -1,5 +1,4 @@
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
@@ -7,27 +6,7 @@ use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::time::Duration;
 
-#[derive(Deserialize, Debug)]
-pub struct AuthResponse {
-    pub device_code: String,
-    pub user_code: String,
-    pub verification_uri: String,
-    pub expires_in: u64,
-    pub interval: u8,
-}
-
-#[derive(Serialize, Debug)]
-struct TokenRequest {
-    client_id: &'static str,
-    device_code: String,
-    grant_type: &'static str,
-}
-
-#[derive(Deserialize, Debug)]
-struct TokenResponse {
-    error: Option<String>,
-    access_token: Option<String>,
-}
+use crate::structs::{AuthResponse, TokenRequest, TokenResponse};
 
 pub async fn request_device_code(
     client_id: &str,

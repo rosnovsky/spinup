@@ -1,28 +1,6 @@
+use crate::structs::Config;
 use reqwest;
-use serde::{Deserialize, Serialize};
 use std::error::Error;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Config {
-    pub version: i8,
-    pub os: Vec<Os>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Os {
-    pub name: String,
-    pub applications: Vec<Software>,
-    pub fonts: Option<Vec<Software>>,
-    pub dependencies: Option<Vec<Software>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Software {
-    pub name: String,
-    pub package: String,
-    pub install: String,
-    pub dependencies: Option<Vec<String>>,
-}
 
 /// Fetches the config from a GitHub Gist.
 ///
