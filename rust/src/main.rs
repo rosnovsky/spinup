@@ -1,3 +1,4 @@
+mod auth;
 mod config;
 mod helpers;
 use tokio;
@@ -7,12 +8,16 @@ async fn main() {
     helpers::clear_console();
     helpers::print_banner();
     helpers::display_system_info().await;
-    // TODO: Make this an interactive command line input, store it locally in a file, and then use it to check for updates. Can you even check if the gist has newer versions?
-    let url = "https://gist.githubusercontent.com/rosnovsky/0ce4dfd64e11a5f1167b83a72530905d/raw/0fa35a12b687f3c2eb0e62bc8fa138980f8ea682/config.json";
 
-    match config::fetch_config_from_gist(url).await {
+    let gists = helpers::get_user_gists().await.unwrap();
+    let gist = gists.find_by_file_name("config.json").unwrap();
+    let url = &gist.files.iter().next().unwrap().1.raw_url;
+
+    match config::fetch_config_from_gist(&url).await {
         Ok(config) => {
-            if let Err(e) = helpers::check_applications(&config.applications).await {
+            let os = helpers::check_current_os(&config.os).await.unwrap();
+
+            if let Err(e) = helpers::check_applications(&os.applications).await {
                 eprintln!("Error checking applications: {}", e);
             }
         }

@@ -1,0 +1,173 @@
+{
+  "$schema": "../../src/utils/schema.json",
+  "version": 2,
+  "os": [
+    {
+      "name": "Fedora Linux",
+      "applications": [
+        {
+          "name": "make",
+          "package": "make",
+          "install": "sudo dnf install -y make"
+        },
+        {
+          "name": "cmake",
+          "package": "cmake",
+          "install": "sudo dnf install -y cmake"
+        },
+        {
+          "name": "gcc",
+          "package": "gcc",
+          "install": "sudo dnf install -y gcc"
+        },
+        {
+          "name": "g++",
+          "package": "g++",
+          "install": "sudo dnf install -y g++"
+        },
+        {
+          "name": "git",
+          "package": "git",
+          "install": "sudo dnf install -y git"
+        },
+        {
+          "name": "node",
+          "package": "nodejs",
+          "install": "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | zsh && nvm install 21",
+          "dependencies": ["zsh"]
+        },
+        {
+          "name": "python",
+          "package": "python",
+          "install": "sudo dnf install -y python3"
+        },
+        {
+          "name": "pip",
+          "package": "python3-pip",
+          "install": "sudo dnf install -y python3-pip"
+        },
+        {
+          "name": "bat",
+          "package": "bat",
+          "install": "sudo dnf install -y bat"
+        },
+        {
+          "name": "fzf",
+          "package": "fzf",
+          "install": "sudo dnf install -y fzf"
+        },
+        {
+          "name": "jq",
+          "package": "jq",
+          "install": "sudo dnf install -y jq"
+        },
+        {
+          "name": "tmux",
+          "package": "tmux",
+          "install": "sudo dnf install -y tmux"
+        },
+        {
+          "name": "rg",
+          "package": "ripgrep",
+          "install": "sudo dnf install -y ripgrep"
+        },
+        {
+          "name": "alacritty",
+          "package": "alacritty",
+          "install": "sudo dnf install -y freetype-devel fontconfig-devel libxcb-devel libxkbcommon-devel && cargo install alacritty",
+          "dependencies": ["cargo", "cmake", "g++"]
+        },
+        {
+          "name": "k9s",
+          "package": "k9s",
+          "install": "brew install derailed/k9s/k9s",
+          "dependencies": ["brew"]
+        },
+        {
+          "name": "btop",
+          "package": "btop",
+          "install": "sudo dnf install -y btop"
+        },
+        {
+          "name": "docker",
+          "package": "docker",
+          "install": "sudo dnf install -y docker"
+        },
+        {
+          "name": "kubectl",
+          "package": "kubectl",
+          "install": "cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo\n[kubernetes] \nname=Kubernetes\nbaseurl=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/\nenabled=1\ngpgcheck=1\ngpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key\nEOF && sudo dnf install -y kubectl"
+        },
+        {
+          "name": "nvim",
+          "package": "neovim",
+          "install": "sudo dnf install -y neovim"
+        },
+        {
+          "name": "eza",
+          "package": "eza",
+          "install": "sudo dnf install -y eza"
+        },
+        {
+          "name": "neofetch",
+          "package": "neofetch",
+          "install": "sudo dnf install -y neofetch"
+        }
+      ],
+      "fonts": [
+        {
+          "name": "Fira Code",
+          "package": "firacode",
+          "install": "sudo dnf install -y firacode"
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "tmux-plugins",
+          "package": "tmux-plugins",
+          "install": "sudo dnf install -y tmux-plugins"
+        },
+        {
+          "name": "brew",
+          "package": "brew",
+          "install": "/bin/zsh -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        },
+        {
+          "name": "zsh",
+          "package": "zsh",
+          "install": "sudo dnf install -y zsh"
+        }
+      ]
+    },
+    {
+      "name": "macOS",
+      "applications": [
+        {
+          "name": "k9s",
+          "package": "k9s",
+          "install": "brew install derailed/k9s/k9s",
+          "dependencies": ["brew"]
+        }
+      ],
+      "fonts": [
+        {
+          "name": "Fira Code",
+          "package": "firacode",
+          "install": "sudo dnf install -y firacode"
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "tmux-plugins",
+          "package": "tmux-plugins",
+          "install": "brew install tmux-plugins"
+        },
+        {
+          "name": "brew",
+          "package": "brew",
+          "install": "/bin/zsh -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        }
+      ]
+    }
+  ]
+}

@@ -3,8 +3,8 @@
   "type": "object",
   "properties": {
     "version": {
-      "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+      "type": "number",
+      "pattern": "^[0-9]+\\+$"
     },
     "$schema": {
       "oneOf": [
@@ -18,39 +18,51 @@
         }
       ]
     },
-    "applications": {
+    "os": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/software"
-      }
-    },
-    "fonts": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/software"
-      }
-    },
-    "dependencies": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/software"
+        "$ref": "#/definitions/os"
       }
     }
   },
-  "required": ["version", "applications"],
+  "required": ["version", "os"],
   "additionalProperties": false,
   "definitions": {
+    "os": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "applications": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/software",
+            "$comment": "Applications"
+          }
+        },
+        "fonts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/software",
+            "$comment": "Fonts"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/software",
+            "$comment": "Dependencies"
+          }
+        }
+      },
+      "required": ["name", "applications"],
+      "additionalProperties": false
+    },
     "software": {
       "type": "object",
       "properties": {
         "name": { "type": "string" },
         "package": { "type": "string" },
-        "install": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/installCommand"
-          }
-        },
+        "install": { "type": "string" },
         "dependencies": {
           "type": "array",
           "items": {
@@ -59,15 +71,6 @@
         }
       },
       "required": ["name", "package", "install"],
-      "additionalProperties": false
-    },
-    "installCommand": {
-      "type": "object",
-      "properties": {
-        "distro": { "type": "string" },
-        "command": { "type": "string" }
-      },
-      "required": ["distro", "command"],
       "additionalProperties": false
     }
   }

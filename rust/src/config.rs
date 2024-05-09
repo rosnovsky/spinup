@@ -4,7 +4,13 @@ use std::error::Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
-    pub version: String,
+    pub version: i8,
+    pub os: Vec<Os>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Os {
+    pub name: String,
     pub applications: Vec<Software>,
     pub fonts: Option<Vec<Software>>,
     pub dependencies: Option<Vec<Software>>,
@@ -14,14 +20,8 @@ pub struct Config {
 pub struct Software {
     pub name: String,
     pub package: String,
-    pub install: Vec<InstallCommand>,
+    pub install: String,
     pub dependencies: Option<Vec<String>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct InstallCommand {
-    pub distro: String,
-    pub command: String,
 }
 
 /// Fetches the config from a GitHub Gist.
