@@ -2,6 +2,7 @@ mod auth;
 mod config;
 mod helpers;
 mod structs;
+use helpers::install_applications;
 use tokio;
 
 #[tokio::main]
@@ -21,6 +22,7 @@ async fn main() {
             if let Err(e) = helpers::check_applications(&os.applications).await {
                 eprintln!("Error checking applications: {}", e);
             }
+            install_applications(&os.applications).await.unwrap();
         }
         Err(e) => {
             eprintln!("Error fetching config: {}", e);
