@@ -1,12 +1,20 @@
-name: Build Rust Project
+name: Build Rust Project Binary
 
 on:
   push:
     branches:
       - main
+    paths:
+      - "src/**"
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+      inputs:
+        reason:
+          description: "Run manually"
+          required: false
+          default: "Manual trigger"
 
 permissions:
   contents: write
