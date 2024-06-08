@@ -10,6 +10,17 @@ use std::process::Stdio;
 use std::{error::Error, path::Path};
 use sysinfo::{Cpu, System, IS_SUPPORTED_SYSTEM};
 
+/// Check applications installation status.
+/// 
+/// ## Arguments
+/// 
+/// * `applications` - A vector of `Software` structs.
+///
+/// ## Returns
+/// This function returns a tuple of two vectors, where the first vector contains the installed applications and the second vector contains the missing applications.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
 pub async fn check_applications_status(
     applications: &[Software],
 ) -> Result<(Vec<Software>, Vec<Software>), Box<dyn Error>> {
@@ -35,6 +46,18 @@ pub async fn check_applications_status(
     Ok((installed, missing))
 }
 
+/// Displays application installation status.
+/// 
+/// ## Arguments
+/// 
+/// * `installed` - A vector of `Software` structs representing installed applications.
+/// * `missing` - A vector of `Software` structs representing missing applications.
+///
+/// ## Returns
+/// This function returns nothing.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
 fn display_installation_status(installed: &Vec<Software>, missing: &Vec<Software>) {
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_LINESEP);
@@ -75,6 +98,13 @@ fn display_installation_status(installed: &Vec<Software>, missing: &Vec<Software
     table.printstd();
 }
 
+/// Check current operating system.
+/// 
+/// ## Returns
+/// This function returns a `System` struct representing the current operating system.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
 pub async fn check_current_os(os: &Vec<Os>) -> Result<Os, Box<dyn Error>> {
     let mut system = System::new_all();
     system.refresh_all();
@@ -102,6 +132,17 @@ pub async fn check_current_os(os: &Vec<Os>) -> Result<Os, Box<dyn Error>> {
     )))
 }
 
+/// Check applications.
+/// 
+/// ## Arguments
+/// 
+/// * `applications` - A vector of `Software` structs.
+///
+/// ## Returns
+/// This function returns a `Result` containing either the `Software` structs or an `Error` if the request fails.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
 pub async fn check_applications(applications: &[Software]) -> Result<(), Box<dyn Error>> {
     let apps = check_applications_status(applications).await;
     if apps.is_err() {
@@ -127,12 +168,21 @@ pub async fn check_applications(applications: &[Software]) -> Result<(), Box<dyn
 /// ```
 /// ## Returns
 /// This function returns nothing.
-
 pub fn clear_console() {
     print!("\x1B[2J\x1B[3J\x1B[H");
 }
 
-// TODO: Should take in os name and cpu name as arguments and only be responsible for displaying the system info
+/// Displays system information.
+/// 
+/// ## Arguments
+/// 
+/// * `os` - A vector of `Os` structs representing the operating systems.
+///
+/// ## Returns
+/// This function returns nothing.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
 pub async fn display_system_info() {
     if !IS_SUPPORTED_SYSTEM {
         println!("This system is not supported.");
@@ -170,10 +220,14 @@ pub async fn display_system_info() {
     table.printstd();
 }
 
+/// Prints a banner.
+///
+/// ## Returns
+/// This function returns nothing.
 pub fn print_banner() {
     let author_name = "Art Rosnovsky".to_string();
     let author_email = "art@rosnovsky.us".to_string();
-    let current_version = "1.0.1";
+    let current_version = "1.0.2";
 
     let standard_font = FIGfont::standard().unwrap();
     let figure = standard_font.convert("SpinUp");
@@ -191,6 +245,13 @@ pub fn print_banner() {
     );
 }
 
+/// Gets the user's GitHub gists.
+/// 
+/// ## Returns
+/// This function returns a `Result` containing a `GistList` struct or an `Error` if the request fails.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
 pub async fn get_user_gists() -> Result<GistList, Box<dyn Error>> {
     fn read_token_from_file(path: &str) -> Result<String, std::io::Error> {
         fs::read_to_string(path)
@@ -235,6 +296,17 @@ pub async fn get_user_gists() -> Result<GistList, Box<dyn Error>> {
     }
 }
 
+/// Installs applications.
+/// 
+/// ## Arguments
+/// 
+/// * `applications` - A vector of `Software` structs.
+///
+/// ## Returns
+/// This function returns a `Result` containing either the `Software` structs or an `Error` if the request fails.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
 pub async fn install_applications(applications: &[Software]) -> Result<(), Box<dyn Error>> {
     let apps_status = check_applications_status(applications).await?;
     let (_installed, missing) = apps_status;
@@ -274,80 +346,3 @@ pub async fn install_applications(applications: &[Software]) -> Result<(), Box<d
     }
     Ok(())
 }
-
-// pub async fn install_applications(applications: &[Software]) -> Result<(), Box<dyn Error>> {
-//     let apps_status = check_applications_status(applications).await?;
-//     let (installed, missing) = apps_status;
-
-//     let os_name = System::long_os_version().unwrap();
-
-//     for app in missing.iter() {
-//         if os_name.contains("Linux") {
-//             match linux_install(app).await {
-//                 Ok(_) => println!("{} installed successfully.", app.name),
-//                 Err(e) => {
-//                     println!("Failed to install {}: {}", app.name, e);
-//                     return Err(Box::new(std::io::Error::new(
-//                         std::io::ErrorKind::Other,
-//                         format!("Failed to install {}: {}", app.name, e),
-//                     )));
-//                 }
-//             }
-//         } else if os_name.contains("macOS") {
-//             match macos_install(app).await {
-//                 Ok(_) => println!("{} installed successfully.", app.name),
-//                 Err(e) => {
-//                     println!("Failed to install {}: {}", app.name, e);
-//                     return Err(Box::new(std::io::Error::new(
-//                         std::io::ErrorKind::Other,
-//                         format!("Failed to install {}: {}", app.name, e),
-//                     )));
-//                 }
-//             }
-//         }
-//     }
-
-//     Ok(())
-// }
-
-// async fn linux_install(app: &Software) -> Result<(), Box<dyn Error>> {
-//     let command = &app.install;
-//     let output = TokioCommand::new(command).status().await?;
-
-//     if output.success() {
-//         Ok(())
-//     } else {
-//         Err(Box::new(std::io::Error::new(
-//             std::io::ErrorKind::Other,
-//             format!("Failed to install {}", app.name),
-//         )))
-//     }
-// }
-
-// async fn macos_install(app: &Software) -> Result<(), Box<dyn Error>> {
-//     let command = &app.install;
-//     let output = TokioCommand::new(command).status().await?;
-
-//     if output.success() {
-//         Ok(())
-//     } else {
-//         Err(Box::new(std::io::Error::new(
-//             std::io::ErrorKind::Other,
-//             format!("Failed to install {}", app.name),
-//         )))
-//     }
-// }
-
-// // Mock functions for System::long_os_version() and check_applications_status()
-// pub struct System;
-
-// impl System {
-//     pub fn long_os_version() -> Result<String, Box<dyn Error>> {
-//         Ok("Linux".to_string()) // or "macOS".to_string()
-//     }
-// }
-
-// async fn check_applications_status(applications: &[Software]) -> Result<(Vec<Software>, Vec<Software>), Box<dyn Error>> {
-//     // Mock implementation, replace with real logic
-//     Ok((vec![], applications.to_vec()))
-// }

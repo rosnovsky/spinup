@@ -8,6 +8,23 @@ use std::time::Duration;
 
 use crate::structs::{AuthResponse, TokenRequest, TokenResponse};
 
+/// Requests device code from GitHub Gist.
+///
+/// ## Arguments
+///
+/// * `url` - The URL of the GitHub Gist.
+///
+/// ## Example
+///
+/// ```
+/// let device_code = request_device_code("https://gist.githubusercontent.com/rosnovsky/.../raw/.../config.json").await?;
+/// ```
+///
+/// ## Returns
+/// This function returns the device code as a `String`.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
 pub async fn request_device_code(
     client_id: &str,
     scope: &str,
@@ -43,6 +60,24 @@ pub async fn request_device_code(
     }
 }
 
+/// Requests token from GitHub Gist.
+///
+/// ## Arguments
+///
+/// * `device_code` - The device code returned by `request_device_code`.
+/// * `interval` - The interval in seconds to wait between requests.
+///
+/// ## Example
+///
+/// ```
+/// let token = request_token("1234567890", 5).await?;
+/// ```
+///
+/// ## Returns
+/// This function returns the token as a `String`.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
 async fn request_token(device_code: &str) -> Result<TokenResponse, Box<dyn std::error::Error>> {
     let client = Client::new();
     let uri = "https://github.com/login/oauth/access_token";
@@ -61,6 +96,24 @@ async fn request_token(device_code: &str) -> Result<TokenResponse, Box<dyn std::
     Ok(parsed_response)
 }
 
+/// Polls for token from GitHub Gist.
+///
+/// ## Arguments
+///
+/// * `device_code` - The device code returned by `request_device_code`.
+/// * `interval` - The interval in seconds to wait between requests.
+///
+/// ## Example
+///
+/// ```
+/// let token = poll_for_token("1234567890", 5).await?;
+/// ```
+///
+/// ## Returns
+/// This function returns the token as a `String`.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
 pub async fn poll_for_token(device_code: &str, interval: u64) {
     loop {
         let response = request_token(device_code)
