@@ -32,10 +32,6 @@
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-conventional": "^18.4.3",
-    "@types/figlet": "^1.5.8",
-    "@types/inquirer": "^9.0.7",
-    "@types/node": "^20.12.8",
-    "@types/shelljs": "^0.8.15",
     "commitizen": "^4.3.0",
     "cz-conventional-changelog": "^3.3.0",
     "husky": "^8.0.3",
@@ -51,16 +47,5 @@
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
-  },
-  "dependencies": {
-    "chalk": "^4.1.2",
-    "cli-table3": "^0.6.4",
-    "enquirer": "^2.4.1",
-    "figlet": "^1.7.0",
-    "inquirer": "^9.2.20",
-    "node-ssh": "^13.2.0",
-    "shelljs": "^0.8.5",
-    "supports-color": "^9.4.0",
-    "systeminformation": "^5.22.7"
   }
 }
