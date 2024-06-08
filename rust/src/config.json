@@ -109,9 +109,9 @@
           "install": "sudo dnf install -y eza"
         },
         {
-          "name": "neofetch",
-          "package": "neofetch",
-          "install": "sudo dnf install -y neofetch"
+          "name": "fastfetch",
+          "package": "fastfetch",
+          "install": "sudo dnf install -y fastfetch"
         }
       ],
       "fonts": [

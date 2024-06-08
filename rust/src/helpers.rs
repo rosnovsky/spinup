@@ -6,6 +6,7 @@ use prettytable::{format, Cell, Row, Table};
 use reqwest::{header, Client};
 use std::fs;
 use std::process::Command;
+use std::process::Stdio;
 use std::{error::Error, path::Path};
 use sysinfo::{Cpu, System, IS_SUPPORTED_SYSTEM};
 
@@ -235,99 +236,118 @@ pub async fn get_user_gists() -> Result<GistList, Box<dyn Error>> {
 }
 
 pub async fn install_applications(applications: &[Software]) -> Result<(), Box<dyn Error>> {
-    // Check current operating system
+    let apps_status = check_applications_status(applications).await?;
+    let (_installed, missing) = apps_status;
 
-    fn is_installed(app_name: &str) -> bool {
-        let output = Command::new("which").arg(app_name).output();
-        match output {
-            Ok(output) => output.status.success(),
-            Err(_) => false,
+    for app in missing.iter() {
+        if let Err(e) = linux_install(app) {
+            println!("Failed to install {}: {}", app.name, e);
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to install {}: {}", app.name, e),
+            )));
+        } else {
+            println!("{} installed successfully.", app.name);
         }
     }
 
-    // Install application on Linux
     fn linux_install(app: &Software) -> Result<(), Box<dyn Error>> {
-        let output = Command::new("sudo")
-            .arg("dnf")
-            .arg("install")
-            .arg("-y")
-            .arg(&app.package)
-            .output()
-            .unwrap();
+        let parts: Vec<&str> = app.install.split_whitespace().collect();
+        let command = parts[0];
+        let args = &parts[1..];
 
-        if output.status.success() {
+        let output = Command::new(command)
+            .args(args)
+            .stderr(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .status();
+
+        if output.is_ok() {
             println!("{} installed successfully.", app.name);
             Ok(())
         } else {
             Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!("Failed to install {}: {}", app.name, output.status),
+                format!("Failed to install {}: {}", app.name, output.unwrap_err()),
             )))
         }
     }
-
-    // Install application on macOS
-    fn macos_install(app: &Software) -> Result<(), Box<dyn Error>> {
-        let output = Command::new("brew")
-            .arg("install")
-            .arg(&app.package)
-            .output()
-            .unwrap();
-
-        if output.status.success() {
-            println!("{} installed successfully.", app.name);
-            Ok(())
-        } else {
-            Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to install {}: {}", app.name, output.status),
-            )))
-        }
-    }
-
-    // Determine the operating system and install the application accordingly
-
-    let os_name = System::long_os_version().unwrap();
-
-    for app in applications {
-        if is_installed(&app.name) {
-            println!("{} is already installed.", app.name);
-        } else if os_name.contains("Linux") {
-            let result = linux_install(app);
-            if result.is_err() {
-                println!(
-                    "Failed to install {}: {}",
-                    app.name,
-                    result.as_ref().unwrap_err()
-                );
-                return Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to install {}: {}", app.name, &result.unwrap_err()),
-                )));
-            } else {
-                println!("{} installed successfully.", app.name);
-                return Ok(());
-            }
-        } else if os_name.contains("MacOS") {
-            let result = macos_install(app);
-            if result.is_err() {
-                println!(
-                    "Failed to install {}: {}",
-                    app.name,
-                    result.as_ref().unwrap_err()
-                );
-                return Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to install {}: {}", app.name, &result.unwrap_err()),
-                )));
-            } else {
-                println!("{} installed successfully.", app.name);
-                return Ok(());
-            }
-        } else {
-            println!("Unsupported operating system.");
-        }
-    }
-
     Ok(())
 }
+
+// pub async fn install_applications(applications: &[Software]) -> Result<(), Box<dyn Error>> {
+//     let apps_status = check_applications_status(applications).await?;
+//     let (installed, missing) = apps_status;
+
+//     let os_name = System::long_os_version().unwrap();
+
+//     for app in missing.iter() {
+//         if os_name.contains("Linux") {
+//             match linux_install(app).await {
+//                 Ok(_) => println!("{} installed successfully.", app.name),
+//                 Err(e) => {
+//                     println!("Failed to install {}: {}", app.name, e);
+//                     return Err(Box::new(std::io::Error::new(
+//                         std::io::ErrorKind::Other,
+//                         format!("Failed to install {}: {}", app.name, e),
+//                     )));
+//                 }
+//             }
+//         } else if os_name.contains("macOS") {
+//             match macos_install(app).await {
+//                 Ok(_) => println!("{} installed successfully.", app.name),
+//                 Err(e) => {
+//                     println!("Failed to install {}: {}", app.name, e);
+//                     return Err(Box::new(std::io::Error::new(
+//                         std::io::ErrorKind::Other,
+//                         format!("Failed to install {}: {}", app.name, e),
+//                     )));
+//                 }
+//             }
+//         }
+//     }
+
+//     Ok(())
+// }
+
+// async fn linux_install(app: &Software) -> Result<(), Box<dyn Error>> {
+//     let command = &app.install;
+//     let output = TokioCommand::new(command).status().await?;
+
+//     if output.success() {
+//         Ok(())
+//     } else {
+//         Err(Box::new(std::io::Error::new(
+//             std::io::ErrorKind::Other,
+//             format!("Failed to install {}", app.name),
+//         )))
+//     }
+// }
+
+// async fn macos_install(app: &Software) -> Result<(), Box<dyn Error>> {
+//     let command = &app.install;
+//     let output = TokioCommand::new(command).status().await?;
+
+//     if output.success() {
+//         Ok(())
+//     } else {
+//         Err(Box::new(std::io::Error::new(
+//             std::io::ErrorKind::Other,
+//             format!("Failed to install {}", app.name),
+//         )))
+//     }
+// }
+
+// // Mock functions for System::long_os_version() and check_applications_status()
+// pub struct System;
+
+// impl System {
+//     pub fn long_os_version() -> Result<String, Box<dyn Error>> {
+//         Ok("Linux".to_string()) // or "macOS".to_string()
+//     }
+// }
+
+// async fn check_applications_status(applications: &[Software]) -> Result<(Vec<Software>, Vec<Software>), Box<dyn Error>> {
+//     // Mock implementation, replace with real logic
+//     Ok((vec![], applications.to_vec()))
+// }
