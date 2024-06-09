@@ -1,22 +1,22 @@
 {
-  "$schema": "../../src/utils/schema.json",
+  "$schema": "./schema.json",
   "version": 2,
   "os": [
     {
       "name": "Fedora Linux",
       "applications": [
         {
-          "name": "make",
+          "name": "Make",
           "package": "make",
           "install": "sudo dnf install -y make"
         },
         {
-          "name": "cmake",
+          "name": "CMake",
           "package": "cmake",
           "install": "sudo dnf install -y cmake"
         },
         {
-          "name": "gcc",
+          "name": "GCC",
           "package": "gcc",
           "install": "sudo dnf install -y gcc"
         },
@@ -31,19 +31,13 @@
           "install": "sudo dnf install -y git"
         },
         {
-          "name": "node",
-          "package": "nodejs",
-          "install": "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | zsh && nvm install 21",
-          "dependencies": ["zsh"]
-        },
-        {
-          "name": "python",
+          "name": "Python",
           "package": "python",
           "install": "sudo dnf install -y python3"
         },
         {
           "name": "pip",
-          "package": "python3-pip",
+          "package": "pip",
           "install": "sudo dnf install -y python3-pip"
         },
         {
@@ -67,8 +61,8 @@
           "install": "sudo dnf install -y tmux"
         },
         {
-          "name": "rg",
-          "package": "ripgrep",
+          "name": "ripgrep",
+          "package": "rg",
           "install": "sudo dnf install -y ripgrep"
         },
         {
@@ -99,8 +93,8 @@
           "install": "cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo\n[kubernetes] \nname=Kubernetes\nbaseurl=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/\nenabled=1\ngpgcheck=1\ngpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key\nEOF && sudo dnf install -y kubectl"
         },
         {
-          "name": "nvim",
-          "package": "neovim",
+          "name": "Neovim",
+          "package": "nvim",
           "install": "sudo dnf install -y neovim"
         },
         {
@@ -112,6 +106,26 @@
           "name": "fastfetch",
           "package": "fastfetch",
           "install": "sudo dnf install -y fastfetch"
+        },
+        {
+          "name": "tldr",
+          "package": "tldr",
+          "install": "sudo dnf install -y tldr"
+        },
+        {
+          "name": "carbon",
+          "package": "carbon-now",
+          "install": "pnpm i -g carbon-now-cli"
+        },
+        {
+          "name": "VHS",
+          "package": "vhs",
+          "install": "brew install vhs"
+        },
+        {
+          "name": "taskbook",
+          "package": "tb",
+          "install": "pnpm install --global taskbook"
         }
       ],
       "fonts": [
@@ -123,6 +137,16 @@
       ],
       "dependencies": [
         {
+          "name": "zsh",
+          "package": "zsh",
+          "install": "sudo dnf install -y zsh"
+        },
+        {
+          "name": "Node",
+          "package": "nodejs",
+          "install": "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | zsh && nvm install latest"
+        },
+        {
           "name": "tmux-plugins",
           "package": "tmux-plugins",
           "install": "sudo dnf install -y tmux-plugins"
@@ -131,11 +155,6 @@
           "name": "brew",
           "package": "brew",
           "install": "/bin/zsh -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
-        },
-        {
-          "name": "zsh",
-          "package": "zsh",
-          "install": "sudo dnf install -y zsh"
         }
       ]
     },
