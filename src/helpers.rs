@@ -24,8 +24,8 @@ use sysinfo::{Cpu, System, IS_SUPPORTED_SYSTEM};
 pub async fn check_applications_status(
     applications: &[Software],
 ) -> Result<(Vec<Software>, Vec<Software>), Box<dyn Error>> {
-    fn is_installed(app_name: &str) -> bool {
-        let output = Command::new("which").arg(app_name).output();
+    fn is_installed(app_package_name: &str) -> bool {
+        let output = Command::new("which").arg(app_package_name).output();
         match output {
             Ok(output) => output.status.success(),
             Err(_) => false,
@@ -36,7 +36,7 @@ pub async fn check_applications_status(
     let mut missing = vec![];
 
     for app in applications {
-        if is_installed(&app.name) {
+        if is_installed(&app.package) {
             installed.push(app.clone());
         } else {
             missing.push(app.clone());
@@ -47,9 +47,9 @@ pub async fn check_applications_status(
 }
 
 /// Displays application installation status.
-/// 
+///
 /// ## Arguments
-/// 
+///
 /// * `installed` - A vector of `Software` structs representing installed applications.
 /// * `missing` - A vector of `Software` structs representing missing applications.
 ///
@@ -64,15 +64,15 @@ fn display_installation_status(installed: &Vec<Software>, missing: &Vec<Software
 
     let installed_header = format!(
         "{}{}{}",
-        "        ".bold(),
+        "         ".bold(),
         "Installed".underline().bold().green(),
-        "        "
+        "         "
     );
     let missing_header = format!(
         "{}{}{}",
-        "        ".bold(),
+        "           ".bold(),
         "Missing".underline().bold().red(),
-        "        "
+        "           "
     );
 
     table.set_titles(Row::new(vec![
@@ -99,7 +99,7 @@ fn display_installation_status(installed: &Vec<Software>, missing: &Vec<Software
 }
 
 /// Check current operating system.
-/// 
+///
 /// ## Returns
 /// This function returns a `System` struct representing the current operating system.
 ///
@@ -246,7 +246,7 @@ pub fn print_banner() {
 }
 
 /// Gets the user's GitHub gists.
-/// 
+///
 /// ## Returns
 /// This function returns a `Result` containing a `GistList` struct or an `Error` if the request fails.
 ///
@@ -296,10 +296,34 @@ pub async fn get_user_gists() -> Result<GistList, Box<dyn Error>> {
     }
 }
 
-/// Installs applications.
-/// 
+/// Installs dependencies for an application
+///
 /// ## Arguments
-/// 
+///
+/// * `app` - The application for which to install dependencies.
+/// * `missing` - The missing applications.
+///
+/// ## Returns
+/// This function returns a `Result` containing either the `Software` structs or an `Error` if the request fails.
+///
+/// ## Errors
+/// If the request fails, this function returns an `Error` with a descriptive message.
+fn install_dependencies(app: &Software, missing: &Vec<Software>) -> Result<(), Box<dyn Error>> {
+    let mut missing_dependencies = missing.clone();
+    missing_dependencies.retain(|x| x.dependencies != app.dependencies);
+    if missing_dependencies.len() > 0 {
+        println!("Installing dependencies for {}...", app.package);
+        let mut dependencies = missing_dependencies.clone();
+        dependencies.retain(|x| x.package != app.package);
+        install_applications(&dependencies);
+    }
+    Ok(())
+}
+
+/// Installs applications.
+///
+/// ## Arguments
+///
 /// * `applications` - A vector of `Software` structs.
 ///
 /// ## Returns
@@ -312,7 +336,14 @@ pub async fn install_applications(applications: &[Software]) -> Result<(), Box<d
     let (_installed, missing) = apps_status;
 
     for app in missing.iter() {
-        if let Err(e) = linux_install(app) {
+        if let Err(e) = install_dependencies(app, &missing) {
+            println!("Failed to install dependencies for {}: {}", app.name, e);
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to install dependencies for {}: {}", app.name, e),
+            )));
+        }
+        if let Err(e) = intsall_app(app) {
             println!("Failed to install {}: {}", app.name, e);
             return Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -323,7 +354,7 @@ pub async fn install_applications(applications: &[Software]) -> Result<(), Box<d
         }
     }
 
-    fn linux_install(app: &Software) -> Result<(), Box<dyn Error>> {
+    fn intsall_app(app: &Software) -> Result<(), Box<dyn Error>> {
         let parts: Vec<&str> = app.install.split_whitespace().collect();
         let command = parts[0];
         let args = &parts[1..];

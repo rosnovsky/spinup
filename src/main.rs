@@ -22,6 +22,7 @@ async fn main() {
             if let Err(e) = helpers::check_applications(&os.applications).await {
                 eprintln!("Error checking applications: {}", e);
             }
+
             install_applications(&os.applications).await.unwrap();
         }
         Err(e) => {
