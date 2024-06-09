@@ -11,9 +11,9 @@ use std::{error::Error, path::Path};
 use sysinfo::{Cpu, System, IS_SUPPORTED_SYSTEM};
 
 /// Check applications installation status.
-///
+/// 
 /// ## Arguments
-///
+/// 
 /// * `applications` - A vector of `Software` structs.
 ///
 /// ## Returns
@@ -133,9 +133,9 @@ pub async fn check_current_os(os: &Vec<Os>) -> Result<Os, Box<dyn Error>> {
 }
 
 /// Check applications.
-///
+/// 
 /// ## Arguments
-///
+/// 
 /// * `applications` - A vector of `Software` structs.
 ///
 /// ## Returns
@@ -173,9 +173,9 @@ pub fn clear_console() {
 }
 
 /// Displays system information.
-///
+/// 
 /// ## Arguments
-///
+/// 
 /// * `os` - A vector of `Os` structs representing the operating systems.
 ///
 /// ## Returns
