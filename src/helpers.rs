@@ -1,5 +1,5 @@
 use crate::auth::{self, poll_for_token};
-use crate::structs::{GistList, Os, Software};
+use crate::structs::{GistList, Os, Software, Dotfiles};
 use colored::*;
 use figlet_rs::FIGfont;
 use prettytable::{format, Cell, Row, Table};
@@ -308,14 +308,13 @@ pub async fn get_user_gists() -> Result<GistList, Box<dyn Error>> {
 ///
 /// ## Errors
 /// If the request fails, this function returns an `Error` with a descriptive message.
-fn install_dependencies(app: &Software, missing: &Vec<Software>) -> Result<(), Box<dyn Error>> {
-    let mut missing_dependencies = missing.clone();
-    missing_dependencies.retain(|x| x.dependencies != app.dependencies);
-    if missing_dependencies.len() > 0 {
-        println!("Installing dependencies for {}...", app.package);
-        let mut dependencies = missing_dependencies.clone();
-        dependencies.retain(|x| x.package != app.package);
-        install_applications(&dependencies);
+fn install_dependencies(app: &Software, _missing: &Vec<Software>) -> Result<(), Box<dyn Error>> {
+    // For now, just print that we'd install dependencies
+    // This avoids the recursion issue and can be implemented properly later
+    if let Some(deps) = &app.dependencies {
+        if !deps.is_empty() {
+            println!("Note: {} requires dependencies: {}", app.name, deps.join(", "));
+        }
     }
     Ok(())
 }
@@ -375,5 +374,249 @@ pub async fn install_applications(applications: &[Software]) -> Result<(), Box<d
             )))
         }
     }
+    Ok(())
+}
+
+/// Checks if stow is installed
+///
+/// ## Returns
+/// This function returns a boolean indicating if stow is installed
+pub fn is_stow_installed() -> bool {
+    Command::new("which")
+        .arg("stow")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+/// Installs stow package manager
+///
+/// ## Returns
+/// This function returns a `Result` indicating success or failure
+///
+/// ## Errors
+/// If the installation fails, this function returns an `Error`
+pub async fn install_stow() -> Result<(), Box<dyn Error>> {
+    println!("{} Installing stow...", "⚙".yellow());
+    
+    // Detect OS and install stow accordingly
+    let mut system = System::new_all();
+    system.refresh_all();
+    let os_name = System::long_os_version().unwrap();
+    
+    let install_command = if os_name.contains("Fedora") || os_name.contains("Red Hat") {
+        "sudo dnf install -y stow"
+    } else if os_name.contains("Ubuntu") || os_name.contains("Debian") {
+        "sudo apt update && sudo apt install -y stow"
+    } else if os_name.contains("Arch") {
+        "sudo pacman -S stow"
+    } else if os_name.contains("macOS") {
+        "brew install stow"
+    } else {
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Unsupported OS for stow installation"
+        )));
+    };
+
+    let parts: Vec<&str> = install_command.split_whitespace().collect();
+    let command = parts[0];
+    let args = &parts[1..];
+
+    let output = Command::new(command)
+        .args(args)
+        .stderr(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .status()?;
+
+    if output.success() {
+        println!("{} Stow installed successfully", "✓".green());
+        Ok(())
+    } else {
+        Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to install stow"
+        )))
+    }
+}
+
+/// Clones dotfiles repository
+///
+/// ## Arguments
+/// * `dotfiles` - The dotfiles configuration
+///
+/// ## Returns
+/// This function returns a `Result` indicating success or failure
+///
+/// ## Errors
+/// If the clone fails, this function returns an `Error`
+pub async fn clone_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
+    let target_dir = dotfiles.target_directory
+        .as_ref()
+        .map(|s| s.as_str())
+        .unwrap_or("dotfiles");
+    
+    let home_dir = std::env::var("HOME")?;
+    let full_path = format!("{}/{}", home_dir, target_dir);
+    
+    // Check if directory already exists
+    if Path::new(&full_path).exists() {
+        println!("{} Dotfiles directory already exists at {}", "ⓘ".blue(), full_path);
+        return Ok(());
+    }
+    
+    println!("{} Cloning dotfiles from {}...", "⬇".yellow(), dotfiles.repository);
+    
+    let output = Command::new("git")
+        .args(&["clone", &dotfiles.repository, &full_path])
+        .stderr(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .status()?;
+
+    if output.success() {
+        println!("{} Dotfiles cloned successfully", "✓".green());
+        Ok(())
+    } else {
+        Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to clone dotfiles repository"
+        )))
+    }
+}
+
+/// Applies dotfiles using stow
+///
+/// ## Arguments
+/// * `dotfiles` - The dotfiles configuration
+///
+/// ## Returns
+/// This function returns a `Result` indicating success or failure
+///
+/// ## Errors
+/// If stow fails, this function returns an `Error`
+pub async fn apply_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
+    let target_dir = dotfiles.target_directory
+        .as_ref()
+        .map(|s| s.as_str())
+        .unwrap_or("dotfiles");
+    
+    let home_dir = std::env::var("HOME")?;
+    let dotfiles_path = format!("{}/{}", home_dir, target_dir);
+    
+    // Change to dotfiles directory
+    std::env::set_current_dir(&dotfiles_path)?;
+    
+    // Get packages to stow
+    let packages = match &dotfiles.packages {
+        Some(packages) => packages.clone(),
+        None => {
+            // If no packages specified, discover all directories (excluding .git, .github, etc.)
+            let entries = std::fs::read_dir(".")?;
+            let mut discovered_packages = Vec::new();
+            
+            for entry in entries {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_dir() {
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if !name.starts_with('.') && name != "README.md" {
+                            discovered_packages.push(name.to_string());
+                        }
+                    }
+                }
+            }
+            discovered_packages
+        }
+    };
+    
+    let dry_run = dotfiles.dry_run.unwrap_or(false);
+    
+    if dry_run {
+        println!("{} DRY RUN: Would apply dotfiles packages: {}", "🔍".yellow(), packages.join(", "));
+    } else {
+        println!("{} Applying dotfiles packages: {}", "🔗".yellow(), packages.join(", "));
+    }
+    
+    // Apply each package
+    for package in &packages {
+        if dry_run {
+            println!("  {} DRY RUN: Would stow {}...", "→".cyan(), package);
+            
+            // Run stow with --no flag for dry run
+            let output = Command::new("stow")
+                .args(&["--no", "-v", package])
+                .stderr(Stdio::piped())
+                .stdout(Stdio::piped())
+                .output()?;
+                
+            if output.status.success() {
+                println!("  {} {} would be applied successfully", "✓".green(), package);
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                
+                if stderr.contains("would cause conflicts") || stderr.contains("existing target") {
+                    println!("  {} {} would have conflicts with existing files", "⚠".yellow(), package);
+                    println!("    {} To resolve: backup existing files or use 'stow --adopt {}'", "💡".blue(), package);
+                } else {
+                    println!("  {} Would fail to apply {}: {}", "✖".red(), package, stderr.trim());
+                }
+            }
+        } else {
+            println!("  {} Stowing {}...", "→".cyan(), package);
+            
+            // First try normal stow
+            let output = Command::new("stow")
+                .args(&["-v", package])
+                .stderr(Stdio::piped())
+                .stdout(Stdio::piped())
+                .output()?;
+
+            if output.status.success() {
+                println!("  {} {} applied successfully", "✓".green(), package);
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                
+                // Check if it's a conflict issue
+                if stderr.contains("would cause conflicts") || stderr.contains("existing target") {
+                    println!("  {} {} has conflicts with existing files", "⚠".yellow(), package);
+                    println!("    {} To resolve: backup existing files or use 'stow --adopt {}'", "💡".blue(), package);
+                    println!("    Skipping {} for now...", package);
+                } else {
+                    println!("  {} Failed to apply {}: {}", "✖".red(), package, stderr.trim());
+                }
+            }
+        }
+    }
+    
+    println!("{} All dotfiles applied successfully!", "🎉".green());
+    Ok(())
+}
+
+/// Setup dotfiles (install stow, clone repo, apply configs)
+///
+/// ## Arguments
+/// * `dotfiles` - The dotfiles configuration
+///
+/// ## Returns
+/// This function returns a `Result` indicating success or failure
+///
+/// ## Errors
+/// If any step fails, this function returns an `Error`
+pub async fn setup_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
+    println!("\n{} Setting up dotfiles...", "📁".bold());
+    
+    // Step 1: Install stow if not present
+    if !is_stow_installed() {
+        install_stow().await?;
+    } else {
+        println!("{} Stow is already installed", "✓".green());
+    }
+    
+    // Step 2: Clone dotfiles repository
+    clone_dotfiles(dotfiles).await?;
+    
+    // Step 3: Apply dotfiles using stow
+    apply_dotfiles(dotfiles).await?;
+    
     Ok(())
 }

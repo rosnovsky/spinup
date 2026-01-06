@@ -81,6 +81,15 @@ pub struct Os {
     pub applications: Vec<Software>,
     pub fonts: Option<Vec<Software>>,
     pub dependencies: Option<Vec<Software>>,
+    pub dotfiles: Option<Dotfiles>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Dotfiles {
+    pub repository: String,
+    pub packages: Option<Vec<String>>,
+    pub target_directory: Option<String>, // Default: ~/dotfiles
+    pub dry_run: Option<bool>, // Default: false
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

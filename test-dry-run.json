@@ -1,0 +1,22 @@
+{
+  "$schema": "./src/schema.json",
+  "version": 2,
+  "os": [
+    {
+      "name": "Fedora Linux",
+      "applications": [
+        {
+          "name": "git",
+          "package": "git",
+          "install": "sudo dnf install -y git"
+        }
+      ],
+      "dotfiles": {
+        "repository": "/home/rosnovsky/code/dotfiles",
+        "packages": ["tmux", "fish", "zsh"],
+        "target_directory": "dry-run-test-dotfiles",
+        "dry_run": true
+      }
+    }
+  ]
+}

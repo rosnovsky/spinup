@@ -1,0 +1,21 @@
+{
+  "$schema": "./src/schema.json",
+  "version": 2,
+  "os": [
+    {
+      "name": "Fedora Linux",
+      "applications": [
+        {
+          "name": "git",
+          "package": "git",
+          "install": "sudo dnf install -y git"
+        }
+      ],
+      "dotfiles": {
+        "repository": "/home/rosnovsky/code/dotfiles",
+        "packages": ["alacritty"],
+        "target_directory": "integration-test-dotfiles"
+      }
+    }
+  ]
+}
