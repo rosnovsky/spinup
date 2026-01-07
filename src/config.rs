@@ -79,6 +79,7 @@ pub fn parse_config(content: &str) -> Result<Config, Box<dyn Error>> {
     }
 }
 
+#[allow(dead_code)]
 pub fn serialize_config(config: &Config) -> Result<String, Box<dyn Error>> {
     toml::to_string_pretty(config).map_err(|e| Box::new(e) as Box<dyn Error>)
 }

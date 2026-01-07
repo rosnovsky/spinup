@@ -1,40 +1,14 @@
 use crate::crypto::EncryptionAPI;
+use crate::structs::{AuthResponse, TokenRequest, TokenResponse};
 use colored::Colorize;
 use reqwest::Client;
 use std::error::Error;
-use std::fs::File;
-use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
 use std::time::Duration;
 
 const CLIENT_ID: &str = "Iv23lig5KG3cqmAJZy4E";
 const SCOPE: &str = "openid profile email offline_access gist repo";
 const DEVICE_CODE_URL: &str = "https://github.com/login/device/code";
 const TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
-
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AuthResponse {
-    pub device_code: String,
-    pub user_code: String,
-    pub verification_uri: String,
-    pub expires_in: u64,
-    pub interval: u8,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TokenRequest {
-    pub client_id: &'static str,
-    pub device_code: String,
-    pub grant_type: &'static str,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TokenResponse {
-    pub error: Option<String>,
-    pub access_token: Option<String>,
-}
 
 pub async fn request_device_code() -> Result<AuthResponse, Box<dyn Error>> {
     let client = Client::new();
@@ -156,53 +130,3 @@ pub async fn authenticate_with_caching() -> Result<String, Box<dyn Error>> {
     }
 }
 
-pub async fn poll_for_token(device_code: &str, interval: u64) {
-    loop {
-        tokio::time::sleep(Duration::from_secs(interval)).await;
-
-        let response = request_token(device_code)
-            .await
-            .expect("Failed to request token");
-        match &response.error {
-            Some(error) => match error.as_str() {
-                "authorization_pending" => {
-                    println!("  {} Waiting for authorization...", "⏳".yellow());
-                }
-                "slow_down" => {
-                    println!("  {} Slowing down polling...", "⏳".yellow());
-                }
-                "expired_token" => {
-                    println!("The device code has expired. Please run `login` again.");
-                    std::process::exit(1);
-                }
-                "access_denied" => {
-                    println!("Login cancelled by user.");
-                    std::process::exit(1);
-                }
-                _ => {
-                    println!("{:?}", response);
-                    std::process::exit(1);
-                }
-            },
-            None => {
-                if let Some(access_token) = response.access_token {
-                    let mut file = File::create("./.token").expect("Failed to create token file");
-                    file.write_all(access_token.as_bytes())
-                        .expect("Failed to write token");
-                    let mut perms = file.metadata().unwrap().permissions();
-                    perms.set_mode(0o600);
-                    file.set_permissions(perms)
-                        .expect("Failed to set permissions");
-                    println!("Successfully obtained token.");
-                    break;
-                }
-            }
-        }
-    }
-}
-
-pub fn clear_token_cache() -> Result<(), Box<dyn Error>> {
-    let mut crypto = EncryptionAPI::new();
-    crypto.clear_cached_token()?;
-    Ok(())
-}

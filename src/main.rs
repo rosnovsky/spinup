@@ -10,6 +10,7 @@ use commands::{run_diff, run_status};
 use helpers::{check_current_os_name, find_matching_os};
 use structs::Config;
 use tokio;
+use colored::Colorize;
 
 fn print_help() {
     println!(
@@ -147,7 +148,20 @@ async fn main() {
     let gists = match helpers::get_gists(&token).await {
         Ok(g) => g,
         Err(e) => {
-            eprintln!("Error fetching gists: {}", e);
+            let err_msg = e.to_string();
+            if err_msg.contains("401 Unauthorized") {
+                eprintln!("{} Authentication token is invalid or expired.", "✖".red());
+                eprintln!(
+                    "{} Clearing cached credentials. Please run spinup again to re-authenticate.",
+                    "ℹ".blue()
+                );
+                let mut crypto = crypto::EncryptionAPI::new();
+                if let Err(c_err) = crypto.clear_cached_token() {
+                    eprintln!("Failed to clear token cache: {}", c_err);
+                }
+            } else {
+                eprintln!("Error fetching gists: {}", e);
+            }
             return;
         }
     };

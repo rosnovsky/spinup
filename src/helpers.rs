@@ -4,7 +4,6 @@ use figlet_rs::FIGfont;
 use prettytable::{format, Cell, Row, Table};
 use reqwest::{header, Client};
 use std::collections::HashMap;
-use std::fs;
 use std::process::Command;
 use std::process::Stdio;
 use std::{error::Error, path::Path};
@@ -92,6 +91,7 @@ pub fn get_all_configured_apps(config: &Config, os_config: &OsConfig) -> Vec<Str
     apps
 }
 
+#[allow(dead_code)]
 pub fn get_all_configured_dependencies(_os_config: &OsConfig) -> Vec<String> {
     Vec::new() // Dependencies section removed in v7
 }
@@ -222,7 +222,7 @@ pub async fn display_system_info() {
 pub fn print_banner() {
     let author_name = "Art Rosnovsky".to_string();
     let author_email = "art@rosnovsky.us".to_string();
-    let current_version = "1.0.2";
+    let current_version = "1.0.3";
 
     let standard_font = FIGfont::standard().unwrap();
     let figure = standard_font.convert("SpinUp");
@@ -250,14 +250,38 @@ pub async fn get_gists(token: &str) -> Result<GistList, Box<dyn Error>> {
         .send()
         .await?;
 
-    if response.status().is_success() {
+    let status = response.status();
+
+    if status.is_success() {
         let gists = response.json::<GistList>().await?;
         Ok(gists)
     } else {
-        Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to fetch gists: {}", response.status()),
-        )))
+        match status.as_u16() {
+            401 => Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "401 Unauthorized: Your authentication token is invalid or expired.",
+            ))),
+            403 => Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "403 Forbidden: Access denied. This might be due to rate limiting or insufficient permissions.",
+            ))),
+            404 => Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "404 Not Found: Unable to find gists.",
+            ))),
+            429 => Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "429 Too Many Requests: You are being rate-limited by GitHub. Please wait a moment before trying again.",
+            ))),
+            500..=599 => Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("GitHub Server Error: {} - Please try again later.", status),
+            ))),
+            _ => Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to fetch gists: {}", status),
+            ))),
+        }
     }
 }
 
@@ -597,7 +621,7 @@ pub async fn get_config_diff(config: &Config) -> Result<ConfigDiff, Box<dyn Erro
     };
 
     let configured_apps = get_all_configured_apps(config, os_config);
-    let (installed, missing) = check_applications_status(&configured_apps).await?;
+    let (_installed, missing) = check_applications_status(&configured_apps).await?;
 
     let dotfiles_diff = if let Some(dotfiles) = &os_config.dotfiles {
 

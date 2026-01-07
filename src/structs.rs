@@ -8,52 +8,89 @@ use std::collections::HashMap;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct User {
     pub login: String,
+    #[allow(dead_code)]
     pub id: u64,
+    #[allow(dead_code)]
     pub node_id: String,
+    #[allow(dead_code)]
     pub avatar_url: String,
+    #[allow(dead_code)]
     pub gravatar_id: Option<String>,
+    #[allow(dead_code)]
     pub url: String,
+    #[allow(dead_code)]
     pub html_url: String,
+    #[allow(dead_code)]
     pub followers_url: String,
+    #[allow(dead_code)]
     pub following_url: String,
+    #[allow(dead_code)]
     pub gists_url: String,
+    #[allow(dead_code)]
     pub starred_url: String,
+    #[allow(dead_code)]
     pub subscriptions_url: String,
+    #[allow(dead_code)]
     pub organizations_url: String,
+    #[allow(dead_code)]
     pub repos_url: String,
+    #[allow(dead_code)]
     pub events_url: String,
+    #[allow(dead_code)]
     pub received_events_url: String,
+    #[allow(dead_code)]
     pub site_admin: bool,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct GistFile {
+    #[allow(dead_code)]
     pub filename: String,
+    #[allow(dead_code)]
     pub r#type: String,
+    #[allow(dead_code)]
     pub language: Option<String>,
     pub raw_url: String,
+    #[allow(dead_code)]
     pub size: usize,
+    #[allow(dead_code)]
     pub truncated: Option<bool>,
+    #[allow(dead_code)]
     pub content: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Gist {
+    #[allow(dead_code)]
     pub id: String,
+    #[allow(dead_code)]
     pub node_id: String,
+    #[allow(dead_code)]
     pub git_pull_url: String,
+    #[allow(dead_code)]
     pub git_push_url: String,
+    #[allow(dead_code)]
     pub html_url: String,
     pub files: HashMap<String, GistFile>,
+    #[allow(dead_code)]
     pub public: bool,
+    #[allow(dead_code)]
     pub raw_url: Option<String>,
+    #[allow(dead_code)]
     pub created_at: String,
+    #[allow(dead_code)]
     pub updated_at: String,
+    #[allow(dead_code)]
     pub description: Option<String>,
+    #[allow(dead_code)]
     pub comments: u32,
+    #[allow(dead_code)]
     pub user: Option<User>,
+    #[allow(dead_code)]
     pub forks_url: String,
+    #[allow(dead_code)]
     pub commits_url: String,
+    #[allow(dead_code)]
     pub comments_url: String,
 }
 
@@ -61,6 +98,7 @@ pub struct Gist {
 pub struct GistList(pub Vec<Gist>);
 
 impl GistList {
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.0.len()
     }
@@ -152,14 +190,17 @@ pub struct Dotfiles {
 
 #[derive(Deserialize, Debug)]
 pub struct AuthResponse {
+    #[allow(dead_code)]
     pub device_code: String,
     pub user_code: String,
     pub verification_uri: String,
+    #[allow(dead_code)]
     pub expires_in: u64,
     pub interval: u8,
 }
 
 #[derive(Serialize, Debug)]
+#[allow(dead_code)]
 pub struct TokenRequest {
     pub client_id: &'static str,
     pub device_code: String,

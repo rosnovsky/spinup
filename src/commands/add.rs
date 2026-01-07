@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables)]
 use crate::structs::Config;
 
 pub async fn run_add_app(

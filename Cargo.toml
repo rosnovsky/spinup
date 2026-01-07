@@ -1,8 +1,6 @@
-cargo-features = ["edition2024"]
-
 [package]
 name = "spinup"
-version = "0.2.0"
+version = "1.0.3"
 authors = ["Art Rosnovsky <art@rosnovsky.us>"]
 edition = "2024"
 description = "Quickly spin up a new Linux computer: install all the necessary software and configure the system to be ready for use."

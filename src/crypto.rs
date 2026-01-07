@@ -1,7 +1,7 @@
+use aes_gcm::aead::Aead;
 use aes_gcm::Aes256Gcm;
 use aes_gcm::KeyInit;
 use aes_gcm::Nonce;
-use aes_gcm::aead::Aead;
 use rand::Rng;
 use rand::RngCore;
 use std::fs;
@@ -23,6 +23,7 @@ pub struct EncryptedToken {
 #[derive(Debug)]
 pub struct DecryptedToken {
     pub token: String,
+    #[allow(dead_code)]
     pub encrypted_at: u64,
     pub is_expired: bool,
 }
@@ -266,6 +267,7 @@ impl EncryptionAPI {
         })?)
     }
 
+    #[allow(dead_code)]
     pub fn generate_signature(
         &mut self,
         data: &str,
@@ -281,6 +283,7 @@ impl EncryptionAPI {
         self.encrypt_secret(&String::from_utf8(input)?)
     }
 
+    #[allow(dead_code)]
     pub fn verify_signature(
         &mut self,
         data: &str,
