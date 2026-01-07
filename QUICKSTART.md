@@ -1,256 +1,227 @@
 # SpinUp Quick Start Guide
 
-SpinUp is a CLI tool for automatically setting up new Linux computers with your applications, dependencies, and dotfiles configurations.
+SpinUp is a CLI tool for automatically configuring systems with applications, dependencies, and dotfiles.
+
+## What's New in v0.2
+
+- **TOML Configuration**: Cleaner, simpler config format
+- **New Commands**: `status`, `diff`, and `add` subcommands
+- **JSON Output**: `--json` flag for scripting integration
 
 ## Prerequisites
 
 - Rust (https://www.rust-lang.org/tools/install)
-- A `config.json` "secret" gist in your GitHub account following the [schema](./src/schema.json)
+- A `config.toml` or `config.json` secret gist on GitHub
 - Git (for dotfiles functionality)
 
-## Basic Usage
+## Quick Start
 
-### 1. Build and Run SpinUp
+### 1. Build SpinUp
 
 ```bash
-# Clone the repository
 git clone https://github.com/rosnovsky/spinup.git
 cd spinup
-
-# Build the project
 cargo build --release
+```
 
-# Run SpinUp
+### 2. Create Your Configuration
+
+Create a `config.toml` file in a GitHub gist:
+
+```toml
+version = 6
+
+[fedora]
+description = "Fedora Linux development environment"
+
+[fedora.applications]
+git = "sudo dnf install -y git"
+neovim = "sudo dnf install -y neovim"
+tmux = "sudo dnf install -y tmux"
+fzf = "sudo dnf install -y fzf"
+ripgrep = "sudo dnf install -y ripgrep"
+bat = "sudo dnf install -y bat"
+
+[fedora.dependencies]
+zsh = "sudo dnf install -y zsh"
+brew = "/bin/zsh -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+
+[fedora.dotfiles]
+repository = "https://github.com/yourusername/dotfiles.git"
+target = "dotfiles"
+```
+
+### 3. Run SpinUp
+
+```bash
 ./target/release/spinup
 ```
 
 SpinUp will:
+
 - Authenticate with GitHub to access your config gist
 - Check your system information
+- Show installed vs missing applications
 - Install missing applications
 - Set up your dotfiles (if configured)
 
-### 2. Configuration Structure
+## New Commands
 
-Your GitHub gist should contain a `config.json` file with this structure:
+### Check System Status
 
-```json
-{
-  "$schema": "./src/schema.json",
-  "version": 2,
-  "os": [
-    {
-      "name": "Fedora Linux",
-      "applications": [
-        {
-          "name": "Git",
-          "package": "git",
-          "install": "sudo dnf install -y git"
-        },
-        {
-          "name": "Tmux",
-          "package": "tmux",
-          "install": "sudo dnf install -y tmux"
-        }
-      ],
-      "fonts": [
-        {
-          "name": "Fira Code",
-          "package": "fira-code-fonts",
-          "install": "sudo dnf install -y fira-code-fonts"
-        }
-      ],
-      "dependencies": [
-        {
-          "name": "stow",
-          "package": "stow",
-          "install": "sudo dnf install -y stow"
-        }
-      ],
-      "dotfiles": {
-        "repository": "https://github.com/yourusername/dotfiles.git",
-        "packages": ["zsh", "tmux", "nvim", "git"],
-        "target_directory": "dotfiles",
-        "dry_run": false
-      }
-    }
-  ]
-}
-```
-
-## Dotfiles Integration (New!)
-
-SpinUp now includes powerful dotfiles management using GNU Stow.
-
-### Setting Up Dotfiles
-
-1. **Structure your dotfiles repository** using stow packages:
-   ```
-   dotfiles/
-   ├── zsh/
-   │   └── .zshrc
-   ├── tmux/
-   │   └── .tmux.conf
-   ├── nvim/
-   │   └── .config/
-   │       └── nvim/
-   │           └── init.vim
-   └── git/
-       └── .gitconfig
-   ```
-
-2. **Configure dotfiles in your config.json**:
-   ```json
-   "dotfiles": {
-     "repository": "https://github.com/yourusername/dotfiles.git",
-     "packages": ["zsh", "tmux", "nvim", "git"],
-     "target_directory": "dotfiles",
-     "dry_run": false
-   }
-   ```
-
-### Dotfiles Configuration Options
-
-- **`repository`** (required): Git URL or local path to your dotfiles
-- **`packages`** (optional): Specific stow packages to apply. If omitted, auto-discovers all packages
-- **`target_directory`** (optional): Directory name for cloned dotfiles (default: "dotfiles")
-- **`dry_run`** (optional): Preview changes without applying them (default: false)
-
-### Auto-Discovery Feature
-
-If you don't specify `packages`, SpinUp will automatically discover all stow packages in your dotfiles repository:
-
-```json
-"dotfiles": {
-  "repository": "https://github.com/yourusername/dotfiles.git"
-}
-```
-
-This will apply ALL packages found in your dotfiles repo (excluding hidden directories like `.git`).
-
-## Dry-Run Mode
-
-Test your configuration safely before making changes:
-
-### Method 1: Config-based
-```json
-"dotfiles": {
-  "repository": "https://github.com/yourusername/dotfiles.git",
-  "packages": ["zsh", "tmux"],
-  "dry_run": true
-}
-```
-
-### Method 2: Command-line (for testing)
 ```bash
-./target/debug/spinup test-config my-config.json --dry-run
+# Human-readable output
+spinup status
+
+# JSON output for scripting
+spinup status --json
 ```
 
-Dry-run mode will show you exactly what would happen without making any changes to your system.
+### See What Would Change
 
-## Conflict Handling
+```bash
+# Show diff with preview
+spinup diff
 
-If SpinUp detects conflicts with existing files, it will:
-- Show you which files conflict
-- Provide guidance on how to resolve them
-- Continue with non-conflicting packages
-
-Example output:
-```
-⚠ tmux has conflicts with existing files
-💡 To resolve: backup existing files or use 'stow --adopt tmux'
+# JSON output
+spinup diff --json
 ```
 
-## What SpinUp Does Automatically
+The `diff` command shows:
 
-1. **System Check**: Identifies your OS and architecture
-2. **Application Check**: Shows installed vs missing applications
-3. **Application Installation**: Installs missing applications using your specified commands
-4. **Stow Installation**: Automatically installs GNU Stow if needed
-5. **Dotfiles Clone**: Clones your dotfiles repository
-6. **Configuration Apply**: Uses stow to symlink your configurations
-7. **Conflict Management**: Handles existing file conflicts gracefully
+- Applications that need to be installed
+- Extra applications installed but not in config
+- Dependencies to install
+- Dotfiles status and preview
+
+### Add to Configuration
+
+```bash
+# Add an application
+spinup add app git "sudo dnf install -y git"
+
+# Add application with dependencies
+spinup add app k9s "brew install derailed/k9s/k9s" --depends brew
+
+# Add dotfiles configuration
+spinup add dotfiles --repo https://github.com/user/dotfiles.git
+spinup add dotfiles --repo https://github.com/user/dotfiles.git --target mydots
+
+# Specify OS explicitly
+spinup add app git "sudo apt install -y git" --os ubuntu
+```
+
+### Test Configuration
+
+```bash
+# Test with local config file
+spinup test-config config.toml
+spinup test-config config.toml --dry-run
+
+# Test stow integration
+spinup test-stow
+```
+
+## Configuration Reference
+
+### Root Level
+
+| Field       | Type    | Required | Description                         |
+| ----------- | ------- | -------- | ----------------------------------- |
+| `version`   | integer | Yes      | Configuration version (currently 6) |
+| `[os_name]` | table   | Yes      | OS-specific configuration           |
+
+### OS Configuration
+
+```toml
+[fedora]
+description = "Fedora Linux development environment"
+
+[fedora.applications]
+# Simple format: package = "install command"
+git = "sudo dnf install -y git"
+neovim = "sudo dnf install -y neovim"
+
+# Extended format for dependencies
+[fedora.applications.k9s]
+install = "brew install derailed/k9s/k9s"
+depends = ["brew"]
+
+[fedora.dependencies]
+zsh = "sudo dnf install -y zsh"
+
+[fedora.dotfiles]
+repository = "https://github.com/user/dotfiles.git"
+target = "dotfiles"
+```
+
+### Dotfiles Configuration
+
+| Field        | Type   | Description                                        |
+| ------------ | ------ | -------------------------------------------------- |
+| `repository` | string | Git URL to dotfiles repository                     |
+| `target`     | string | Directory name (default: "dotfiles")               |
+| `packages`   | array  | Specific stow packages (auto-discovers if omitted) |
+
+## Dotfiles Repository Structure
+
+Structure your dotfiles repository with stow packages:
+
+```
+dotfiles/
+├── zsh/
+│   └── .zshrc
+├── tmux/
+│   └── .tmux.conf
+├── nvim/
+│   └── .config/
+│       └── nvim/
+│           └── init.vim
+└── git/
+    └── .gitconfig
+```
 
 ## Supported Operating Systems
 
-- ✅ Fedora Linux
-- ✅ Ubuntu/Debian (partial support)
-- ✅ Arch Linux (partial support)  
-- ✅ macOS (partial support)
-
-## Examples
-
-### Minimal Configuration
-```json
-{
-  "version": 2,
-  "os": [{
-    "name": "Fedora Linux",
-    "applications": [
-      {"name": "Git", "package": "git", "install": "sudo dnf install -y git"}
-    ],
-    "dotfiles": {
-      "repository": "https://github.com/yourusername/dotfiles.git"
-    }
-  }]
-}
-```
-
-### Full Configuration with Dry-Run
-```json
-{
-  "version": 2,
-  "os": [{
-    "name": "Fedora Linux",
-    "applications": [
-      {"name": "Git", "package": "git", "install": "sudo dnf install -y git"},
-      {"name": "Tmux", "package": "tmux", "install": "sudo dnf install -y tmux"},
-      {"name": "Neovim", "package": "nvim", "install": "sudo dnf install -y neovim"}
-    ],
-    "fonts": [
-      {"name": "FiraCode", "package": "fira-code-fonts", "install": "sudo dnf install -y fira-code-fonts"}
-    ],
-    "dependencies": [
-      {"name": "Stow", "package": "stow", "install": "sudo dnf install -y stow"}
-    ],
-    "dotfiles": {
-      "repository": "https://github.com/yourusername/dotfiles.git",
-      "packages": ["zsh", "tmux", "nvim", "git", "alacritty"],
-      "target_directory": "my-dotfiles",
-      "dry_run": true
-    }
-  }]
-}
-```
+- Fedora Linux
+- Ubuntu/Debian
+- Arch Linux
+- macOS
 
 ## Troubleshooting
 
-### Common Issues
+### Stow Conflicts
 
-1. **Stow conflicts**: Backup existing config files or use `stow --adopt package-name`
-2. **Missing applications**: Check your package manager and install commands
-3. **Permission errors**: Ensure you have sudo access for system package installation
-4. **Git authentication**: Make sure you can access your dotfiles repository
-
-### Testing Your Configuration
-
-Use the built-in test commands:
 ```bash
-# Test stow integration
-cargo run -- test-stow
-
-# Test with your config file
-cargo run -- test-config your-config.json
-
-# Test with dry-run
-cargo run -- test-config your-config.json --dry-run
+# Backup and resolve conflicts
+stow --adopt package-name
 ```
+
+### Testing Configuration
+
+```bash
+# Dry-run mode
+spinup test-config config.toml --dry-run
+
+# Check what would happen
+spinup diff
+```
+
+### Git Authentication
+
+Ensure your dotfiles repository is accessible:
+
+- Use HTTPS with a personal access token, or
+- Set up SSH keys for GitHub
 
 ## Next Steps
 
-1. Create your dotfiles repository using stow structure
-2. Set up your `config.json` gist on GitHub
-3. Test with dry-run mode first
+1. Create your dotfiles repository with stow structure
+2. Create a `config.toml` gist on GitHub
+3. Test with `spinup diff` to preview
 4. Run SpinUp on your new machine!
 
-For more details, see the [schema documentation](./src/schema.json) and [examples](./test-*.json).
+## More Information
+
+- [TOML Schema Reference](./src/schema.toml)
+- [Example Configuration](./src/config.toml)

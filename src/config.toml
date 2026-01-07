@@ -1,0 +1,66 @@
+version = 6
+
+[fedora]
+description = "Fedora Linux development environment"
+
+[fedora.applications]
+git = "sudo dnf install -y git"
+neovim = "sudo dnf install -y neovim"
+tmux = "sudo dnf install -y tmux"
+fzf = "sudo dnf install -y fzf"
+ripgrep = "sudo dnf install -y ripgrep"
+bat = "sudo dnf install -y bat"
+eza = "sudo dnf install -y eza"
+fastfetch = "sudo dnf install -y fastfetch"
+btop = "sudo dnf install -y btop"
+docker = "sudo dnf install -y docker"
+aha = "sudo dnf install -y aha"
+
+[fedora.applications.kubectl]
+install = """cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/
+enabled=1
+gpgcheck=1
+gpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key
+EOF && sudo dnf install -y kubectl"""
+
+[fedora.applications.firacode]
+install = "sudo dnf install -y firacode-fonts"
+
+[fedora.applications.k9s]
+install = "brew install derailed/k9s/k9s"
+depends = ["brew"]
+
+[fedora.dependencies]
+zsh = "sudo dnf install -y zsh"
+node = "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | zsh && nvm install latest"
+brew = "/bin/zsh -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+
+[fedora.dotfiles]
+repository = "https://github.com/rosnovsky/dotfiles.git"
+target = "dotfiles"
+
+[macos]
+description = "macOS development environment"
+
+[macos.applications]
+k9s = "brew install derailed/k9s/k9s"
+neovim = "brew install neovim"
+tmux = "brew install tmux"
+fzf = "brew install fzf"
+ripgrep = "brew install ripgrep"
+bat = "brew install bat"
+eza = "brew install eza"
+fastfetch = "brew install fastfetch"
+
+[macos.applications.firacode]
+install = "brew install --cask font-fira-code"
+
+[macos.dependencies]
+brew = "/bin/zsh -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+
+[macos.dotfiles]
+repository = "https://github.com/rosnovsky/dotfiles.git"
+target = "dotfiles"

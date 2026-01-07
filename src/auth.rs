@@ -1,131 +1,175 @@
+use crate::crypto::EncryptionAPI;
+use colored::Colorize;
 use reqwest::Client;
-use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::time::Duration;
 
-use crate::structs::{AuthResponse, TokenRequest, TokenResponse};
+const CLIENT_ID: &str = "Iv23lig5KG3cqmAJZy4E";
+const SCOPE: &str = "openid profile email offline_access gist repo";
+const DEVICE_CODE_URL: &str = "https://github.com/login/device/code";
+const TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
 
-/// Requests device code from GitHub Gist.
-///
-/// ## Arguments
-///
-/// * `url` - The URL of the GitHub Gist.
-///
-/// ## Example
-///
-/// ```
-/// let device_code = request_device_code("https://gist.githubusercontent.com/rosnovsky/.../raw/.../config.json").await?;
-/// ```
-///
-/// ## Returns
-/// This function returns the device code as a `String`.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
-pub async fn request_device_code(
-    client_id: &str,
-    scope: &str,
-    url: &str,
-) -> Result<AuthResponse, Box<dyn Error>> {
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AuthResponse {
+    pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub expires_in: u64,
+    pub interval: u8,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokenRequest {
+    pub client_id: &'static str,
+    pub device_code: String,
+    pub grant_type: &'static str,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokenResponse {
+    pub error: Option<String>,
+    pub access_token: Option<String>,
+}
+
+pub async fn request_device_code() -> Result<AuthResponse, Box<dyn Error>> {
     let client = Client::new();
 
-    let mut form = HashMap::new();
-    form.insert("client_id", client_id);
-    form.insert("scope", scope);
-
     let response = client
-        .post(url)
+        .post(DEVICE_CODE_URL)
         .header("content-type", "application/x-www-form-urlencoded")
         .header("accept", "application/json")
-        .form(&form)
+        .form(&[("client_id", CLIENT_ID), ("scope", SCOPE)])
         .send()
         .await?;
 
     if response.status().is_success() {
-        match response.json::<AuthResponse>().await {
-            Ok(auth_response) => Ok(auth_response),
-            Err(e) => Err(Box::new(e)),
-        }
+        let auth_response = response.json::<AuthResponse>().await?;
+        Ok(auth_response)
     } else {
         Err(Box::new(std::io::Error::new(
             std::io::ErrorKind::Other,
-            format!(
-                "Failed to get valid response: Status code {}",
-                response.status()
-            ),
+            format!("Failed to get device code: Status {}", response.status()),
         )))
     }
 }
 
-/// Requests token from GitHub Gist.
-///
-/// ## Arguments
-///
-/// * `device_code` - The device code returned by `request_device_code`.
-/// * `interval` - The interval in seconds to wait between requests.
-///
-/// ## Example
-///
-/// ```
-/// let token = request_token("1234567890", 5).await?;
-/// ```
-///
-/// ## Returns
-/// This function returns the token as a `String`.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
 async fn request_token(device_code: &str) -> Result<TokenResponse, Box<dyn std::error::Error>> {
     let client = Client::new();
-    let uri = "https://github.com/login/oauth/access_token";
     let parameters = TokenRequest {
-        client_id: "Iv23lig5KG3cqmAJZy4E",
+        client_id: CLIENT_ID,
         device_code: device_code.to_string(),
         grant_type: "urn:ietf:params:oauth:grant-type:device_code",
     };
+
     let response = client
-        .post(uri)
+        .post(TOKEN_URL)
         .json(&parameters)
         .header("accept", "application/json")
         .send()
         .await?;
+
     let parsed_response = response.json::<TokenResponse>().await?;
     Ok(parsed_response)
 }
 
-/// Polls for token from GitHub Gist.
-///
-/// ## Arguments
-///
-/// * `device_code` - The device code returned by `request_device_code`.
-/// * `interval` - The interval in seconds to wait between requests.
-///
-/// ## Example
-///
-/// ```
-/// let token = poll_for_token("1234567890", 5).await?;
-/// ```
-///
-/// ## Returns
-/// This function returns the token as a `String`.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
+pub async fn authenticate_with_caching() -> Result<String, Box<dyn Error>> {
+    let mut crypto = EncryptionAPI::new();
+
+    if let Some(cached) = crypto.get_cached_token()? {
+        if !cached.is_expired {
+            println!("{} Using cached authentication token", "ℹ".blue());
+            return Ok(cached.token);
+        }
+        println!("{} Cached token has expired, re-authenticating...", "ℹ".blue());
+        crypto.clear_cached_token()?;
+    }
+
+    let device_code = request_device_code().await?;
+
+    println!();
+    println!("{} Authentication required", "🔐".yellow());
+    println!("  Device code: {}", device_code.user_code.blue());
+    println!("  URL: {}", device_code.verification_uri);
+    println!();
+    println!("  {} Please complete authorization at the URL above", "→".cyan());
+    println!("  {} Code: {}", "→".cyan(), device_code.user_code.bold());
+    println!();
+    println!("{} Scopes requested:", "📋".yellow());
+    println!("  - openid, profile, email (identity)");
+    println!("  - gist (access your configuration gist)");
+    println!("  - repo (read private repositories for dotfiles)");
+    println!();
+
+    let interval = device_code.interval as u64;
+
+    println!("{} Polling for authentication...", "⏳".yellow());
+
+    loop {
+        tokio::time::sleep(Duration::from_secs(interval)).await;
+
+        let response = request_token(&device_code.device_code).await?;
+
+        match &response.error {
+            Some(error) => match error.as_str() {
+                "authorization_pending" => {
+                    println!("  {} Waiting for authorization...", "⏳".yellow());
+                }
+                "slow_down" => {
+                    println!("  {} Slowing down polling...", "⏳".yellow());
+                }
+                "expired_token" => {
+                    return Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Device code expired. Please run spinup again.",
+                    )));
+                }
+                "access_denied" => {
+                    println!("{} Authorization cancelled by user", "ℹ".blue());
+                    std::process::exit(0);
+                }
+                _ => {
+                    return Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Authentication error: {}", error),
+                    )));
+                }
+            },
+            None => {
+                if let Some(access_token) = response.access_token {
+                    println!("{} Authentication successful!", "✓".green());
+
+                    if let Err(e) = crypto.store_cached_token(&access_token) {
+                        println!("{} Warning: Failed to cache token ({}). Will re-authenticate next time.", "⚠".yellow(), e);
+                    } else {
+                        println!("{} Token cached for 24 hours", "ℹ".blue());
+                    }
+
+                    return Ok(access_token);
+                }
+            }
+        }
+    }
+}
+
 pub async fn poll_for_token(device_code: &str, interval: u64) {
     loop {
+        tokio::time::sleep(Duration::from_secs(interval)).await;
+
         let response = request_token(device_code)
             .await
             .expect("Failed to request token");
         match &response.error {
             Some(error) => match error.as_str() {
                 "authorization_pending" => {
-                    tokio::time::sleep(Duration::from_secs(interval)).await;
+                    println!("  {} Waiting for authorization...", "⏳".yellow());
                 }
                 "slow_down" => {
-                    tokio::time::sleep(Duration::from_secs(interval + 5)).await;
+                    println!("  {} Slowing down polling...", "⏳".yellow());
                 }
                 "expired_token" => {
                     println!("The device code has expired. Please run `login` again.");
@@ -146,7 +190,7 @@ pub async fn poll_for_token(device_code: &str, interval: u64) {
                     file.write_all(access_token.as_bytes())
                         .expect("Failed to write token");
                     let mut perms = file.metadata().unwrap().permissions();
-                    perms.set_mode(0o600); // Sets file permissions so only the owner can read or write
+                    perms.set_mode(0o600);
                     file.set_permissions(perms)
                         .expect("Failed to set permissions");
                     println!("Successfully obtained token.");
@@ -155,4 +199,10 @@ pub async fn poll_for_token(device_code: &str, interval: u64) {
             }
         }
     }
+}
+
+pub fn clear_token_cache() -> Result<(), Box<dyn Error>> {
+    let mut crypto = EncryptionAPI::new();
+    crypto.clear_cached_token()?;
+    Ok(())
 }

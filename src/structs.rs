@@ -1,26 +1,29 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+// ----------------------------------------------------------------------------
+// GIST & GITHUB API STRUCTS (Unchanged)
+// ----------------------------------------------------------------------------
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct User {
-    login: String,
-    id: u64,
-    node_id: String,
-    avatar_url: String,
-    gravatar_id: Option<String>,
-    url: String,
-    html_url: String,
-    followers_url: String,
-    following_url: String,
-    gists_url: String,
-    starred_url: String,
-    subscriptions_url: String,
-    organizations_url: String,
-    repos_url: String,
-    events_url: String,
-    received_events_url: String,
-    site_admin: bool,
-    // Additional fields can be added here
+    pub login: String,
+    pub id: u64,
+    pub node_id: String,
+    pub avatar_url: String,
+    pub gravatar_id: Option<String>,
+    pub url: String,
+    pub html_url: String,
+    pub followers_url: String,
+    pub following_url: String,
+    pub gists_url: String,
+    pub starred_url: String,
+    pub subscriptions_url: String,
+    pub organizations_url: String,
+    pub repos_url: String,
+    pub events_url: String,
+    pub received_events_url: String,
+    pub site_admin: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,36 +72,83 @@ impl GistList {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+// ----------------------------------------------------------------------------
+// NEW CONFIGURATION SCHEMA (v7)
+// ----------------------------------------------------------------------------
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
-    pub version: i8,
-    pub os: Vec<Os>,
+    pub version: u8,
+
+    // The [common] section for cross-platform tools
+    #[serde(default)]
+    pub common: Option<CommonConfig>,
+
+    // Captures [fedora], [macos], etc.
+    #[serde(flatten)]
+    pub os_entries: HashMap<String, OsConfig>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Os {
-    pub name: String,
-    pub applications: Vec<Software>,
-    pub fonts: Option<Vec<Software>>,
-    pub dependencies: Option<Vec<Software>>,
+pub struct CommonConfig {
+    #[serde(default)]
+    pub packages: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OsConfig {
+    pub description: Option<String>,
+
+    // Replaces the old "applications" mixed bag.
+    // Now separated into batchable managers (dnf/brew) and custom tasks.
+    #[serde(default)]
+    pub manager: HashMap<String, ManagerConfig>,
+
+    #[serde(default)]
+    pub tasks: HashMap<String, TaskConfig>,
+
     pub dotfiles: Option<Dotfiles>,
+}
+
+// Represents [os.manager.dnf] or [os.manager.brew]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ManagerConfig {
+    #[serde(default)]
+    pub packages: Vec<String>,
+
+    #[serde(default)]
+    pub flags: Vec<String>,
+
+    // If this manager itself needs setup (e.g. brew on linux), link to a task
+    pub depends_on: Option<String>,
+}
+
+// Represents [os.tasks.kubectl] - complex scripts
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TaskConfig {
+    pub script: String,
+    pub description: Option<String>,
+    pub depends_on: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Dotfiles {
     pub repository: String,
+
+    #[serde(default)]
     pub packages: Option<Vec<String>>,
-    pub target_directory: Option<String>, // Default: ~/dotfiles
-    pub dry_run: Option<bool>, // Default: false
+
+    // 'alias' allows TOML to use "target" while Rust uses "target_directory"
+    #[serde(alias = "target")]
+    pub target_directory: Option<String>,
+
+    #[serde(alias = "dry-run")]
+    pub dry_run: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Software {
-    pub name: String,
-    pub package: String,
-    pub install: String,
-    pub dependencies: Option<Vec<String>>,
-}
+// ----------------------------------------------------------------------------
+// AUTHENTICATION STRUCTS
+// ----------------------------------------------------------------------------
 
 #[derive(Deserialize, Debug)]
 pub struct AuthResponse {
@@ -120,4 +170,45 @@ pub struct TokenRequest {
 pub struct TokenResponse {
     pub error: Option<String>,
     pub access_token: Option<String>,
+}
+
+// ----------------------------------------------------------------------------
+// REPORTING & DIFF STRUCTS (Updated for v7 logic)
+// ----------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SystemStatus {
+    pub os_name: String,
+    // Generalized: "dnf: git, neovim"
+    pub installed_packages: HashMap<String, Vec<String>>,
+    pub missing_packages: HashMap<String, Vec<String>>,
+    pub dotfiles_status: DotfilesStatus,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DotfilesStatus {
+    pub cloned: bool,
+    pub applied: bool,
+    pub packages: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConfigDiff {
+    pub os_name: String,
+
+    // Batch install commands to run
+    // Key = Manager (dnf), Value = List of packages to install
+    pub packages_to_install: HashMap<String, Vec<String>>,
+
+    // Complex tasks that need to run
+    pub tasks_to_run: Vec<String>,
+
+    pub dotfiles_diff: DotfilesDiff,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DotfilesDiff {
+    pub needs_clone: bool,
+    pub packages_to_apply: Vec<String>,
+    pub packages_already_applied: Vec<String>,
 }

@@ -1,37 +1,21 @@
-# SpinUp - Automated Linux System Setup
+# SpinUp - Automated System Configuration
 
-SpinUp is a command line tool to automatically set up new Linux computers with your applications, dependencies, fonts, and **dotfiles configurations**. It's designed to get you from a fresh install to a fully configured development environment in minutes.
+SpinUp is a command line tool to automatically set up new systems with your applications, dependencies, and **dotfiles configurations**. It's designed to get you from a fresh install to a fully configured development environment in minutes.
 
-## 🚀 New: Dotfiles Integration
+## Features
 
-SpinUp now includes **comprehensive dotfiles management** using GNU Stow:
-- **Automatic stow installation** and setup
-- **Repository cloning** (GitHub, local paths)
-- **Smart package management** with conflict detection
-- **Dry-run mode** for safe configuration testing
-- **Auto-discovery** of stow packages
+- **TOML Configuration**: Clean, human-readable config format
+- **Application Management**: Install missing applications and dependencies
+- **Dotfiles Integration**: Full stow-based configuration management
+- **Status & Diff Commands**: Preview what will be installed before applying
+- **Multi-OS Support**: Fedora, Ubuntu, Arch, macOS
+- **GitHub Gist Integration**: Configuration via private gists
 
 ## Quick Start
 
 **👉 See the [Quick Start Guide](./QUICKSTART.md) for complete setup instructions and examples.**
 
-## Features
-
-- ✅ **Application Management**: Install missing applications and dependencies
-- ✅ **Font Installation**: Set up development fonts automatically  
-- ✅ **Dotfiles Integration**: Full stow-based configuration management
-- ✅ **Dry-Run Mode**: Preview changes before applying them
-- ✅ **Conflict Detection**: Smart handling of existing configurations
-- ✅ **Multi-OS Support**: Fedora, Ubuntu, Arch, macOS
-- ✅ **GitHub Integration**: Configuration via private gists
-
-## Prerequisites
-
-- Rust (https://www.rust-lang.org/tools/install)
-- A `config.json` "secret" gist in your GitHub account following the [schema](./src/schema.json)
-- Git (for dotfiles functionality)
-
-## Basic Usage
+## Installation
 
 ```bash
 # Clone and build
@@ -43,4 +27,62 @@ cargo build --release
 ./target/release/spinup
 ```
 
-For detailed configuration examples and dotfiles setup, see the [Quick Start Guide](./QUICKSTART.md).
+## New CLI Commands
+
+```bash
+# Check system status
+spinup status
+spinup status --json       # Machine-readable output
+
+# See what would be installed
+spinup diff                # Shows diff with preview
+spinup diff --json         # JSON output for scripting
+
+# Add to configuration
+spinup add app git "sudo dnf install -y git"
+spinup add app k9s "brew install k9s" --depends brew
+spinup add dotfiles --repo https://github.com/user/dotfiles.git
+
+# Test configuration
+spinup test-config config.toml    # Test local config file
+spinup test-stow                  # Test stow integration
+```
+
+## Configuration
+
+SpinUp now uses **TOML** for configuration. Create a `config.toml` file in a GitHub gist:
+
+```toml
+version = 6
+
+[fedora]
+description = "Fedora Linux development environment"
+
+[fedora.applications]
+git = "sudo dnf install -y git"
+neovim = "sudo dnf install -y neovim"
+tmux = "sudo dnf install -y tmux"
+
+[fedora.applications.k9s]
+install = "brew install derailed/k9s/k9s"
+depends = ["brew"]
+
+[fedora.dependencies]
+zsh = "sudo dnf install -y zsh"
+
+[fedora.dotfiles]
+repository = "https://github.com/yourusername/dotfiles.git"
+target = "dotfiles"
+```
+
+## Prerequisites
+
+- Rust (https://www.rust-lang.org/tools/install)
+- A `config.toml` or `config.json` "secret" gist in your GitHub account
+- Git (for dotfiles functionality)
+
+## Documentation
+
+- [Quick Start Guide](./QUICKSTART.md) - Getting started
+- [TOML Schema](./src/schema.toml) - Complete schema reference
+- [Example Config](./src/config.toml) - Real-world configuration

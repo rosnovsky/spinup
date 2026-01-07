@@ -1,42 +1,31 @@
-use crate::auth::{self, poll_for_token};
-use crate::structs::{GistList, Os, Software, Dotfiles};
+use crate::structs::{Config, ConfigDiff, Dotfiles, DotfilesDiff, DotfilesStatus, GistList, OsConfig, SystemStatus};
 use colored::*;
 use figlet_rs::FIGfont;
 use prettytable::{format, Cell, Row, Table};
 use reqwest::{header, Client};
+use std::collections::HashMap;
 use std::fs;
 use std::process::Command;
 use std::process::Stdio;
 use std::{error::Error, path::Path};
 use sysinfo::{Cpu, System, IS_SUPPORTED_SYSTEM};
 
-/// Check applications installation status.
-/// 
-/// ## Arguments
-/// 
-/// * `applications` - A vector of `Software` structs.
-///
-/// ## Returns
-/// This function returns a tuple of two vectors, where the first vector contains the installed applications and the second vector contains the missing applications.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
-pub async fn check_applications_status(
-    applications: &[Software],
-) -> Result<(Vec<Software>, Vec<Software>), Box<dyn Error>> {
-    fn is_installed(app_package_name: &str) -> bool {
-        let output = Command::new("which").arg(app_package_name).output();
-        match output {
-            Ok(output) => output.status.success(),
-            Err(_) => false,
-        }
+pub fn is_app_installed(app_package_name: &str) -> bool {
+    let output = Command::new("which").arg(app_package_name).output();
+    match output {
+        Ok(output) => output.status.success(),
+        Err(_) => false,
     }
+}
 
+pub async fn check_applications_status(
+    applications: &[String],
+) -> Result<(Vec<String>, Vec<String>), Box<dyn Error>> {
     let mut installed = vec![];
     let mut missing = vec![];
 
     for app in applications {
-        if is_installed(&app.package) {
+        if is_app_installed(app) {
             installed.push(app.clone());
         } else {
             missing.push(app.clone());
@@ -46,19 +35,7 @@ pub async fn check_applications_status(
     Ok((installed, missing))
 }
 
-/// Displays application installation status.
-///
-/// ## Arguments
-///
-/// * `installed` - A vector of `Software` structs representing installed applications.
-/// * `missing` - A vector of `Software` structs representing missing applications.
-///
-/// ## Returns
-/// This function returns nothing.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
-fn display_installation_status(installed: &Vec<Software>, missing: &Vec<Software>) {
+pub fn display_installation_status(installed: &Vec<String>, missing: &Vec<String>) {
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_LINESEP);
 
@@ -84,66 +61,115 @@ fn display_installation_status(installed: &Vec<Software>, missing: &Vec<Software
     for i in 0..max_len {
         let installed_cell = installed
             .get(i)
-            .map_or(Cell::new(""), |Software { name, .. }| {
-                Cell::new(format!("{} {}", "✔".green(), name).as_str())
-            });
+            .map_or(Cell::new(""), |name| Cell::new(format!("{} {}", "✔".green(), name).as_str()));
 
         let missing_cell = missing
             .get(i)
-            .map_or(Cell::new(""), |Software { name, .. }| {
-                Cell::new(format!("{} {}", "✖".red(), name).as_str())
-            });
+            .map_or(Cell::new(""), |name| Cell::new(format!("{} {}", "✖".red(), name).as_str()));
         table.add_row(Row::new(vec![installed_cell, missing_cell]));
     }
     table.printstd();
 }
 
-/// Check current operating system.
-///
-/// ## Returns
-/// This function returns a `System` struct representing the current operating system.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
-pub async fn check_current_os(os: &Vec<Os>) -> Result<Os, Box<dyn Error>> {
-    let mut system = System::new_all();
-    system.refresh_all();
+pub fn get_all_configured_apps(config: &Config, os_config: &OsConfig) -> Vec<String> {
+    let mut apps = Vec::new();
 
-    let os_name = System::long_os_version().unwrap();
-
-    fn check_os_keywords(system_description: &str, keywords: &[&str]) -> bool {
-        keywords
-            .iter()
-            .any(|keyword| system_description.contains(keyword))
+    // 1. Common packages
+    if let Some(common) = &config.common {
+        apps.extend(common.packages.clone());
     }
 
-    let fedora = ["Linux", "Fedora"];
-    let macos = ["MacOS"];
+    // 2. Manager packages
+    for manager in os_config.manager.values() {
+        apps.extend(manager.packages.clone());
+    }
 
-    for opsys in os {
-        if check_os_keywords(&os_name, &fedora) || check_os_keywords(&os_name, &macos) {
-            return Ok(opsys.clone());
+    // 3. Tasks
+    for task_name in os_config.tasks.keys() {
+        apps.push(task_name.clone());
+    }
+
+    apps
+}
+
+pub fn get_all_configured_dependencies(_os_config: &OsConfig) -> Vec<String> {
+    Vec::new() // Dependencies section removed in v7
+}
+
+pub async fn check_current_os_name() -> Result<String, Box<dyn Error>> {
+    let mut system = System::new_all();
+    system.refresh_all();
+    let os_name = System::long_os_version().unwrap();
+    Ok(os_name)
+}
+
+pub fn detect_os_key(os_description: &str) -> &str {
+    if os_description.contains("Fedora") || os_description.contains("Red Hat") || os_description.contains("Linux") {
+        "fedora"
+    } else if os_description.contains("macOS") || os_description.contains("MacOS") {
+        "macos"
+    } else if os_description.contains("Ubuntu") || os_description.contains("Debian") {
+        "ubuntu"
+    } else if os_description.contains("Arch") {
+        "arch"
+    } else {
+        ""
+    }
+}
+
+pub async fn find_matching_os(config: &Config, os_description: &str) -> Option<(String, OsConfig)> {
+    let os_key = detect_os_key(os_description);
+
+    if let Some(os_config) = config.os_entries.get(os_key) {
+        return Some((os_key.to_string(), os_config.clone()));
+    }
+
+    for (key, os_config) in &config.os_entries {
+        if let Some(desc) = &os_config.description {
+            if os_description.to_lowercase().contains(&desc.to_lowercase())
+                || desc.to_lowercase().contains(&os_description.to_lowercase())
+            {
+                return Some((key.clone(), os_config.clone()));
+            }
         }
     }
 
-    Err(Box::new(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        "Failed to check current OS",
-    )))
+    None
 }
 
-/// Check applications.
-/// 
-/// ## Arguments
-/// 
-/// * `applications` - A vector of `Software` structs.
-///
-/// ## Returns
-/// This function returns a `Result` containing either the `Software` structs or an `Error` if the request fails.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
-pub async fn check_applications(applications: &[Software]) -> Result<(), Box<dyn Error>> {
+fn categorize_apps(apps: &[String], os_config: &OsConfig, config: &Config) -> HashMap<String, Vec<String>> {
+    let mut map = HashMap::new();
+    for app in apps {
+        let mut placed = false;
+        for (mgr_name, mgr_cfg) in &os_config.manager {
+            if mgr_cfg.packages.contains(app) {
+                map.entry(mgr_name.clone()).or_insert_with(Vec::new).push(app.clone());
+                placed = true;
+                break;
+            }
+        }
+        if placed { continue; }
+
+        if os_config.tasks.contains_key(app) {
+             map.entry("tasks".to_string()).or_insert_with(Vec::new).push(app.clone());
+             placed = true;
+        }
+        if placed { continue; }
+
+        if let Some(common) = &config.common {
+            if common.packages.contains(app) {
+                 map.entry("common".to_string()).or_insert_with(Vec::new).push(app.clone());
+                 placed = true;
+            }
+        }
+        if placed { continue; }
+
+        map.entry("other".to_string()).or_insert_with(Vec::new).push(app.clone());
+    }
+    map
+}
+
+pub async fn check_applications(applications: &[String]) -> Result<(), Box<dyn Error>> {
     let apps = check_applications_status(applications).await;
     if apps.is_err() {
         return Err(Box::new(std::io::Error::new(
@@ -159,30 +185,10 @@ pub async fn check_applications(applications: &[Software]) -> Result<(), Box<dyn
     Ok(())
 }
 
-/// Clears the console.
-///
-/// ## Example
-///
-/// ```
-/// clear_console();
-/// ```
-/// ## Returns
-/// This function returns nothing.
 pub fn clear_console() {
     print!("\x1B[2J\x1B[3J\x1B[H");
 }
 
-/// Displays system information.
-/// 
-/// ## Arguments
-/// 
-/// * `os` - A vector of `Os` structs representing the operating systems.
-///
-/// ## Returns
-/// This function returns nothing.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
 pub async fn display_system_info() {
     if !IS_SUPPORTED_SYSTEM {
         println!("This system is not supported.");
@@ -193,16 +199,13 @@ pub async fn display_system_info() {
     system.refresh_all();
 
     let cpu = system.cpus().iter().next().unwrap();
-
     let brand = Cpu::brand(cpu);
     let model = Cpu::name(cpu);
-
     let os_release = System::long_os_version().unwrap();
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_DEFAULT);
 
-    // Adding custom column settings and characters can be done via the format API
     table.set_titles(Row::new(vec![
         Cell::new(&format!("{}", "Operating System".blue())),
         Cell::new(&format!("{}", os_release.bright_green())),
@@ -210,20 +213,12 @@ pub async fn display_system_info() {
 
     table.add_row(Row::new(vec![
         Cell::new(&format!("{}", "Processor".blue())),
-        Cell::new(&format!(
-            "{} {}",
-            brand.bright_green(),
-            model.bright_green()
-        )),
+        Cell::new(&format!("{} {}", brand.bright_green(), model.bright_green())),
     ]));
 
     table.printstd();
 }
 
-/// Prints a banner.
-///
-/// ## Returns
-/// This function returns nothing.
 pub fn print_banner() {
     let author_name = "Art Rosnovsky".to_string();
     let author_email = "art@rosnovsky.us".to_string();
@@ -231,7 +226,6 @@ pub fn print_banner() {
 
     let standard_font = FIGfont::standard().unwrap();
     let figure = standard_font.convert("SpinUp");
-    // assert!(figure.is_some());
     println!("{}", figure.unwrap().to_string().green());
     println!(
         "{} {} {} {}{}{}{}",
@@ -245,48 +239,19 @@ pub fn print_banner() {
     );
 }
 
-/// Gets the user's GitHub gists.
-///
-/// ## Returns
-/// This function returns a `Result` containing a `GistList` struct or an `Error` if the request fails.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
-pub async fn get_user_gists() -> Result<GistList, Box<dyn Error>> {
-    fn read_token_from_file(path: &str) -> Result<String, std::io::Error> {
-        fs::read_to_string(path)
-    }
-
-    if !Path::new("./.token").exists() {
-        let device_code = auth::request_device_code(
-            "Iv23lig5KG3cqmAJZy4E",
-            "openid profile email offline_access",
-            "https://github.com/login/device/code",
-        )
-        .await
-        .unwrap();
-        println!(
-            "Device code: {:?}\nURL: {}",
-            device_code.user_code, device_code.verification_uri
-        );
-        let interval = 5; // polling interval in seconds
-        poll_for_token(device_code.device_code.as_str(), interval).await;
-    }
-
+pub async fn get_gists(token: &str) -> Result<GistList, Box<dyn Error>> {
     let client = Client::new();
     let request_url = "https://api.github.com/gists";
-    let token = read_token_from_file("./.token")?;
 
     let response = client
         .get(request_url)
         .header(header::AUTHORIZATION, format!("token {}", token))
-        .header(header::USER_AGENT, "reqwest")
+        .header(header::USER_AGENT, "spinup")
         .send()
         .await?;
 
     if response.status().is_success() {
         let gists = response.json::<GistList>().await?;
-        fs::remove_file("./.token")?;
         Ok(gists)
     } else {
         Err(Box::new(std::io::Error::new(
@@ -296,91 +261,84 @@ pub async fn get_user_gists() -> Result<GistList, Box<dyn Error>> {
     }
 }
 
-/// Installs dependencies for an application
-///
-/// ## Arguments
-///
-/// * `app` - The application for which to install dependencies.
-/// * `missing` - The missing applications.
-///
-/// ## Returns
-/// This function returns a `Result` containing either the `Software` structs or an `Error` if the request fails.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
-fn install_dependencies(app: &Software, _missing: &Vec<Software>) -> Result<(), Box<dyn Error>> {
-    // For now, just print that we'd install dependencies
-    // This avoids the recursion issue and can be implemented properly later
-    if let Some(deps) = &app.dependencies {
-        if !deps.is_empty() {
-            println!("Note: {} requires dependencies: {}", app.name, deps.join(", "));
-        }
-    }
-    Ok(())
-}
+pub async fn install_applications(applications: &[String], config: &Config) -> Result<(), Box<dyn Error>> {
+    let os_description = check_current_os_name().await?;
+    let Some((_, os_config)) = find_matching_os(config, &os_description).await else {
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("No matching OS config found for: {}", os_description),
+        )));
+    };
 
-/// Installs applications.
-///
-/// ## Arguments
-///
-/// * `applications` - A vector of `Software` structs.
-///
-/// ## Returns
-/// This function returns a `Result` containing either the `Software` structs or an `Error` if the request fails.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
-pub async fn install_applications(applications: &[Software]) -> Result<(), Box<dyn Error>> {
     let apps_status = check_applications_status(applications).await?;
-    let (_installed, missing) = apps_status;
+    let (_, missing) = apps_status;
 
-    for app in missing.iter() {
-        if let Err(e) = install_dependencies(app, &missing) {
-            println!("Failed to install dependencies for {}: {}", app.name, e);
-            return Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to install dependencies for {}: {}", app.name, e),
-            )));
+    for app_name in missing.iter() {
+        // 1. Try to find in tasks
+        if let Some(task) = os_config.tasks.get(app_name) {
+            println!("Running task: {}", app_name);
+            execute_install_command(&task.script, app_name).await?;
+            continue;
         }
-        if let Err(e) = intsall_app(app) {
-            println!("Failed to install {}: {}", app.name, e);
-            return Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to install {}: {}", app.name, e),
-            )));
-        } else {
-            println!("{} installed successfully.", app.name);
+
+        // 2. Try to find in managers
+        let mut found_in_manager = false;
+        for (manager_name, manager_config) in &os_config.manager {
+            if manager_config.packages.contains(app_name) {
+                let flags = manager_config.flags.join(" ");
+                // Basic heuristic for install command
+                let install_cmd = if manager_name == "brew" {
+                    format!("brew install {} {}", flags, app_name)
+                } else {
+                    format!("sudo {} install {} {}", manager_name, flags, app_name)
+                };
+
+                println!("Installing {} via {}...", app_name, manager_name);
+                execute_install_command(&install_cmd, app_name).await?;
+                found_in_manager = true;
+                break;
+            }
         }
-    }
 
-    fn intsall_app(app: &Software) -> Result<(), Box<dyn Error>> {
-        let parts: Vec<&str> = app.install.split_whitespace().collect();
-        let command = parts[0];
-        let args = &parts[1..];
-
-        let output = Command::new(command)
-            .args(args)
-            .stderr(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .status();
-
-        if output.is_ok() {
-            println!("{} installed successfully.", app.name);
-            Ok(())
-        } else {
-            Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to install {}: {}", app.name, output.unwrap_err()),
-            )))
+        if !found_in_manager {
+            println!("Could not determine how to install {}", app_name);
         }
     }
+
     Ok(())
 }
 
-/// Checks if stow is installed
-///
-/// ## Returns
-/// This function returns a boolean indicating if stow is installed
+async fn execute_install_command(command: &str, app_name: &str) -> Result<(), Box<dyn Error>> {
+    let parts: Vec<&str> = command.split_whitespace().collect();
+    if parts.is_empty() {
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Empty install command for {}", app_name),
+        )));
+    }
+
+    let command_name = parts[0];
+    let args = &parts[1..];
+
+    let output = Command::new(command_name)
+        .args(args)
+        .stderr(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .output();
+
+    match output {
+        Ok(status) if status.status.success() => Ok(()),
+        Ok(status) => Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Install command exited with code: {:?}", status.status.code()),
+        ))),
+        Err(e) => Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to execute install command for {}: {}", app_name, e),
+        ))),
+    }
+}
+
 pub fn is_stow_installed() -> bool {
     Command::new("which")
         .arg("stow")
@@ -389,21 +347,11 @@ pub fn is_stow_installed() -> bool {
         .unwrap_or(false)
 }
 
-/// Installs stow package manager
-///
-/// ## Returns
-/// This function returns a `Result` indicating success or failure
-///
-/// ## Errors
-/// If the installation fails, this function returns an `Error`
 pub async fn install_stow() -> Result<(), Box<dyn Error>> {
     println!("{} Installing stow...", "⚙".yellow());
-    
-    // Detect OS and install stow accordingly
-    let mut system = System::new_all();
-    system.refresh_all();
-    let os_name = System::long_os_version().unwrap();
-    
+
+    let os_name = check_current_os_name().await?;
+
     let install_command = if os_name.contains("Fedora") || os_name.contains("Red Hat") {
         "sudo dnf install -y stow"
     } else if os_name.contains("Ubuntu") || os_name.contains("Debian") {
@@ -427,9 +375,9 @@ pub async fn install_stow() -> Result<(), Box<dyn Error>> {
         .args(args)
         .stderr(Stdio::inherit())
         .stdout(Stdio::inherit())
-        .status()?;
+        .output()?;
 
-    if output.success() {
+    if output.status.success() {
         println!("{} Stow installed successfully", "✓".green());
         Ok(())
     } else {
@@ -440,33 +388,22 @@ pub async fn install_stow() -> Result<(), Box<dyn Error>> {
     }
 }
 
-/// Clones dotfiles repository
-///
-/// ## Arguments
-/// * `dotfiles` - The dotfiles configuration
-///
-/// ## Returns
-/// This function returns a `Result` indicating success or failure
-///
-/// ## Errors
-/// If the clone fails, this function returns an `Error`
 pub async fn clone_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
     let target_dir = dotfiles.target_directory
         .as_ref()
         .map(|s| s.as_str())
         .unwrap_or("dotfiles");
-    
+
     let home_dir = std::env::var("HOME")?;
     let full_path = format!("{}/{}", home_dir, target_dir);
-    
-    // Check if directory already exists
+
     if Path::new(&full_path).exists() {
         println!("{} Dotfiles directory already exists at {}", "ⓘ".blue(), full_path);
         return Ok(());
     }
-    
+
     println!("{} Cloning dotfiles from {}...", "⬇".yellow(), dotfiles.repository);
-    
+
     let output = Command::new("git")
         .args(&["clone", &dotfiles.repository, &full_path])
         .stderr(Stdio::inherit())
@@ -484,36 +421,23 @@ pub async fn clone_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
     }
 }
 
-/// Applies dotfiles using stow
-///
-/// ## Arguments
-/// * `dotfiles` - The dotfiles configuration
-///
-/// ## Returns
-/// This function returns a `Result` indicating success or failure
-///
-/// ## Errors
-/// If stow fails, this function returns an `Error`
 pub async fn apply_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
     let target_dir = dotfiles.target_directory
         .as_ref()
         .map(|s| s.as_str())
         .unwrap_or("dotfiles");
-    
+
     let home_dir = std::env::var("HOME")?;
     let dotfiles_path = format!("{}/{}", home_dir, target_dir);
-    
-    // Change to dotfiles directory
+
     std::env::set_current_dir(&dotfiles_path)?;
-    
-    // Get packages to stow
+
     let packages = match &dotfiles.packages {
         Some(packages) => packages.clone(),
         None => {
-            // If no packages specified, discover all directories (excluding .git, .github, etc.)
             let entries = std::fs::read_dir(".")?;
             let mut discovered_packages = Vec::new();
-            
+
             for entry in entries {
                 let entry = entry?;
                 let path = entry.path();
@@ -528,32 +452,30 @@ pub async fn apply_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
             discovered_packages
         }
     };
-    
+
     let dry_run = dotfiles.dry_run.unwrap_or(false);
-    
+
     if dry_run {
         println!("{} DRY RUN: Would apply dotfiles packages: {}", "🔍".yellow(), packages.join(", "));
     } else {
         println!("{} Applying dotfiles packages: {}", "🔗".yellow(), packages.join(", "));
     }
-    
-    // Apply each package
+
     for package in &packages {
         if dry_run {
             println!("  {} DRY RUN: Would stow {}...", "→".cyan(), package);
-            
-            // Run stow with --no flag for dry run
+
             let output = Command::new("stow")
                 .args(&["--no", "-v", package])
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped())
                 .output()?;
-                
+
             if output.status.success() {
                 println!("  {} {} would be applied successfully", "✓".green(), package);
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                
+
                 if stderr.contains("would cause conflicts") || stderr.contains("existing target") {
                     println!("  {} {} would have conflicts with existing files", "⚠".yellow(), package);
                     println!("    {} To resolve: backup existing files or use 'stow --adopt {}'", "💡".blue(), package);
@@ -563,8 +485,7 @@ pub async fn apply_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
             }
         } else {
             println!("  {} Stowing {}...", "→".cyan(), package);
-            
-            // First try normal stow
+
             let output = Command::new("stow")
                 .args(&["-v", package])
                 .stderr(Stdio::piped())
@@ -575,8 +496,7 @@ pub async fn apply_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
                 println!("  {} {} applied successfully", "✓".green(), package);
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                
-                // Check if it's a conflict issue
+
                 if stderr.contains("would cause conflicts") || stderr.contains("existing target") {
                     println!("  {} {} has conflicts with existing files", "⚠".yellow(), package);
                     println!("    {} To resolve: backup existing files or use 'stow --adopt {}'", "💡".blue(), package);
@@ -587,36 +507,156 @@ pub async fn apply_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
             }
         }
     }
-    
+
     println!("{} All dotfiles applied successfully!", "🎉".green());
     Ok(())
 }
 
-/// Setup dotfiles (install stow, clone repo, apply configs)
-///
-/// ## Arguments
-/// * `dotfiles` - The dotfiles configuration
-///
-/// ## Returns
-/// This function returns a `Result` indicating success or failure
-///
-/// ## Errors
-/// If any step fails, this function returns an `Error`
 pub async fn setup_dotfiles(dotfiles: &Dotfiles) -> Result<(), Box<dyn Error>> {
     println!("\n{} Setting up dotfiles...", "📁".bold());
-    
-    // Step 1: Install stow if not present
+
     if !is_stow_installed() {
         install_stow().await?;
     } else {
         println!("{} Stow is already installed", "✓".green());
     }
-    
-    // Step 2: Clone dotfiles repository
+
     clone_dotfiles(dotfiles).await?;
-    
-    // Step 3: Apply dotfiles using stow
+
     apply_dotfiles(dotfiles).await?;
-    
+
     Ok(())
+}
+
+pub async fn get_system_status(config: &Config) -> Result<SystemStatus, Box<dyn Error>> {
+    let os_description = check_current_os_name().await?;
+    let os_key = detect_os_key(&os_description);
+
+    let Some(os_config) = config.os_entries.get(os_key) else {
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("No configuration found for OS: {}", os_description),
+        )));
+    };
+
+    let configured_apps = get_all_configured_apps(config, os_config);
+    let (installed, missing) = check_applications_status(&configured_apps).await?;
+
+    let installed_packages = categorize_apps(&installed, os_config, config);
+    let missing_packages = categorize_apps(&missing, os_config, config);
+
+    let dotfiles_status = if let Some(dotfiles) = &os_config.dotfiles {
+        let target_dir = dotfiles.target_directory
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("dotfiles");
+
+        let home_dir = std::env::var("HOME")?;
+        let dotfiles_path = format!("{}/{}", home_dir, target_dir);
+        let cloned = Path::new(&dotfiles_path).exists();
+
+        let packages = match &dotfiles.packages {
+            Some(pkgs) => pkgs.clone(),
+            None => vec![],
+        };
+
+        DotfilesStatus {
+            cloned,
+            applied: false,
+            packages,
+        }
+    } else {
+        DotfilesStatus {
+            cloned: false,
+            applied: false,
+            packages: vec![],
+        }
+    };
+
+    Ok(SystemStatus {
+        os_name: os_description,
+        installed_packages,
+        missing_packages,
+        dotfiles_status,
+    })
+}
+
+pub fn format_status_json(status: &SystemStatus) -> Result<String, Box<dyn Error>> {
+    serde_json::to_string_pretty(status).map_err(|e| Box::new(e) as Box<dyn Error>)
+}
+
+pub async fn get_config_diff(config: &Config) -> Result<ConfigDiff, Box<dyn Error>> {
+    let os_description = check_current_os_name().await?;
+    let os_key = detect_os_key(&os_description);
+
+    let Some(os_config) = config.os_entries.get(os_key) else {
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("No configuration found for OS: {}", os_description),
+        )));
+    };
+
+    let configured_apps = get_all_configured_apps(config, os_config);
+    let (installed, missing) = check_applications_status(&configured_apps).await?;
+
+    let dotfiles_diff = if let Some(dotfiles) = &os_config.dotfiles {
+
+        let target_dir = dotfiles.target_directory
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("dotfiles");
+
+        let home_dir = std::env::var("HOME")?;
+        let dotfiles_path = format!("{}/{}", home_dir, target_dir);
+        let needs_clone = !Path::new(&dotfiles_path).exists();
+
+        let packages = match &dotfiles.packages {
+            Some(pkgs) => pkgs.clone(),
+            None => {
+                let mut pkgs = Vec::new();
+                if let Ok(entries) = std::fs::read_dir(&dotfiles_path) {
+                    for entry in entries {
+                        if let Ok(entry) = entry {
+                            let path = entry.path();
+                            if path.is_dir() {
+                                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                                    if !name.starts_with('.') && name != "README.md" {
+                                        pkgs.push(name.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                pkgs
+            }
+        };
+
+        DotfilesDiff {
+            needs_clone,
+            packages_to_apply: packages.clone(),
+            packages_already_applied: vec![],
+        }
+    } else {
+        DotfilesDiff {
+            needs_clone: false,
+            packages_to_apply: vec![],
+            packages_already_applied: vec![],
+        }
+    };
+
+    let mut missing_categorized = categorize_apps(&missing, os_config, config);
+    let tasks_to_run = missing_categorized.remove("tasks").unwrap_or_default();
+    let packages_to_install = missing_categorized;
+
+    Ok(ConfigDiff {
+        os_name: os_description,
+        packages_to_install,
+        tasks_to_run,
+        dotfiles_diff,
+    })
+}
+
+pub fn format_diff_json(diff: &ConfigDiff) -> Result<String, Box<dyn Error>> {
+    serde_json::to_string_pretty(diff).map_err(|e| Box::new(e) as Box<dyn Error>)
 }

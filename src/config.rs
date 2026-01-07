@@ -1,33 +1,84 @@
 use crate::structs::Config;
 use reqwest;
 use std::error::Error;
+use std::io;
 
-/// Fetches the config from a GitHub Gist.
-///
-/// ## Arguments
-///
-/// * `url` - The URL of the GitHub Gist.
-///
-/// ## Example
-///
-/// ```
-/// let config = fetch_config_from_gist("https://gist.githubusercontent.com/rosnovsky/0ce4dfd64e11a5f1167b83a72530905d/raw/0fa35a12b687f3c2eb0e62bc8fa138980f8ea682/config.json").await?;
-/// ```
-///
-/// ## Returns
-/// This function returns a `Result` containing either the `Config` struct or an `Error` if the request fails.
-///
-/// ## Errors
-/// If the request fails, this function returns an `Error` with a descriptive message.
 pub async fn fetch_config_from_gist(url: &str) -> Result<Config, Box<dyn Error>> {
-    let response = reqwest::get(url).await?;
-    if response.status().is_success() {
-        let config: Config = response.json().await?;
+    let response = reqwest::get(url).await?.error_for_status()?;
+    let content = response.text().await?;
+    parse_config(&content)
+}
+
+const OLD_JSON_ERROR: &str = r#"Detected old JSON config format with $schema field.
+
+The new SpinUp version uses TOML configuration. Please migrate your config to TOML format.
+
+Example TOML config:
+version = 6
+
+[fedora]
+description = "Fedora Linux"
+
+[fedora.applications]
+git = "sudo dnf install -y git"
+neovim = "sudo dnf install -y neovim"
+
+[fedora.dotfiles]
+repository = "https://github.com/yourusername/dotfiles.git"
+
+See docs/schema.toml for the full schema reference."#;
+
+pub fn parse_config(content: &str) -> Result<Config, Box<dyn Error>> {
+    let trimmed = content.trim_start();
+
+    if trimmed.starts_with("{") {
+        let json_result = serde_json::from_str::<serde_json::Value>(content);
+        let json_value = match json_result {
+            Ok(v) => v,
+            Err(e) => {
+                return Err(Box::new(io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Invalid JSON: {}", e),
+                )));
+            }
+        };
+
+        if json_value.get("$schema").is_some() {
+            return Err(Box::new(io::Error::new(
+                io::ErrorKind::Other,
+                OLD_JSON_ERROR.to_string(),
+            )));
+        }
+
+        let config = match serde_json::from_value(json_value) {
+            Ok(c) => c,
+            Err(e) => {
+                return Err(Box::new(io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Invalid config structure: {}", e),
+                )));
+            }
+        };
         Ok(config)
+    } else if trimmed.starts_with("[") || trimmed.contains("[") {
+        match toml::from_str(content) {
+            Ok(c) => Ok(c),
+            Err(e) => Err(Box::new(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Invalid TOML: {}", e),
+            ))),
+        }
     } else {
-        Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Failed to fetch or deserialize config",
-        )))
+        match toml::from_str(content) {
+            Ok(c) => Ok(c),
+            Err(_) => Err(Box::new(io::Error::new(
+                io::ErrorKind::Other,
+                "Unknown config format. Expected JSON (starts with '{') or TOML.",
+            ))),
+        }
     }
+}
+
+pub fn serialize_config(config: &Config) -> Result<String, Box<dyn Error>> {
+    toml::to_string_pretty(config).map_err(|e| Box::new(e) as Box<dyn Error>)
 }
